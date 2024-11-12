@@ -97,10 +97,7 @@ let coreRuleSet = {
 
         | _ -> None
     
-    | [Leaf (List x); Leaf(Keyword "map"); y] -> 
-        match y with
-        | Node ys -> ListLeaf (x |> List.map (fun item -> Node (ys@[item])))
-        | Leaf y -> ListLeaf (x |> List.map (fun item -> Node [Leaf y; item]))
+    | [Leaf (List x); Leaf(Keyword "map"); Node(ys)] -> ListLeaf (x |> List.map (fun item -> Node (ys@[item])))
 
     | _ -> None
     )

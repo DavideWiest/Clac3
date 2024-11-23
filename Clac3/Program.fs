@@ -1,46 +1,56 @@
 ﻿open Clac3.Domain
-open Clac3.BuiltIn
+open Clac3.DomainUtil
 open Clac3.Interpreter
+open Clac3.BuiltIn
 
-let customRules = [
+let customRules: RewriteRule list = [
     {
-        pattern = function 
-            | Node [Leaf(Keyword "factorial"); Leaf(Integer 0)] -> IntLeaf 1
-            | Node [Leaf(Keyword "factorial"); Leaf(x)] -> 
-                [
-                    Leaf x;
-                    Leaf(Keyword "*"); 
-                    Node([
-                        Leaf(Keyword "factorial"); 
-                        Node([Leaf x; Leaf(Keyword "-"); Leaf(Integer 1)])
-                    ])
-                ]
-                |> Node
-                |> Some
-            | _ -> None
-    }
+        pattern = ValueNode ("factorial", 0)
+        replacement = Args.zero 1
+    };
     {
-        pattern = function 
-            | Node [Leaf(Keyword "fibonacci"); Leaf(Integer 0)] -> IntLeaf 0
-            | Node [Leaf(Keyword "fibonacci"); Leaf(Integer 1)] -> IntLeaf 1
-            | Node [Leaf(Keyword "fibonacci"); n] -> 
-                [
-                    Node([Leaf(Keyword "fibonacci"); Node([n; Leaf(Keyword "-"); Leaf(Integer 1)])]);
-                    Leaf(Keyword "+");
-                    Node([Leaf(Keyword "fibonacci"); Node([n; Leaf(Keyword "-"); Leaf(Integer 2)])])
-                ]
-                |> Node
-                |> Some
-            | _ -> None
-    
+        pattern = GetNode ("factorial", TInteger)
+        replacement = Args.one (fun n ->
+            node (
+                n, 
+                "*",
+                node (
+                    "factorial",
+                    node (n, "-", 1)
+                )
+            )
+        )
+    };
+    {
+        pattern = ValueNode (Keyword "fibonacci", Integer 0)
+        replacement = Args.zero 0
+    };
+    {
+        pattern = ValueNode (Keyword "fibonacci", Integer 1)
+        replacement = Args.zero 1
+    };
+    {
+        pattern = GetNode (Keyword "fibonacci", TInteger)
+        replacement = Args.one (fun n ->
+            node (
+                node (
+                    Keyword "fibonacci",
+                    node (n, Keyword "-", Integer 1)
+                ),
+                Keyword "+",
+                node (
+                    Keyword "fibonacci",
+                    node (n, Keyword "-", Integer 2)
+                )
+            )
+        )
     }
 ]
 
 let dummyProgram = {
-    rewriteRules = coreRuleSet::customRules
+    rewriteRules = List.append coreRuleSet customRules
     freeExpressions = [
-        // Node([Leaf(Keyword "fibonacci"); Leaf(Integer 30)])
-        Node([Leaf(Keyword "factorial"); Leaf(Integer 3)])
+        node (Keyword "factorial", Integer 3)
     ]
 }
 

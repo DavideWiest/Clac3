@@ -1,39 +1,42 @@
 ﻿module Clac3.Domain
 
-type ExpressionType =
-    | TBool
-    | TInteger
-    | TFloat
-    | TString
-    | TList
-    | TVariable
-    | TKeyword
+type Pattern =
+    | PAny
+    | PAnyEvaluatdLeaf // any leaf that's not a variable
+    | PBool
+    | PInteger
+    | PFloat
+    | PString
+    | PList
+    | PVariable
+    | PKeyword
+    | PNode
 
-    | TNode
-    | TNodeContaining of Pattern list
-    | TNodeStartingWith of Pattern list
-
-    | TAny
-    | TEvaluatedLeaf // any leaf that's not a variable
-
-and Expression =
+    | PBoolValue of bool
+    | PIntegerValue of int
+    | PFloatValue of float
+    | PStringValue of string
+    | PListValue of Pattern list
+    | PVariableValue of string // PVariable has to exist, because variables exist
+    | PKeywordValue of string
+    | PNodeContaining of Pattern list
+    // not yet implemented in the interpreter
+    //| PNodeStartingWith of Pattern list
+    
+type Expression =
     | Bool of bool
     | Integer of int
     | Float of float
     | String of string
-    | List of Expression list // this should probably be Expression instead
+    | List of Expression list
     | Variable of string
-    | Keyword of string // only predefined symbols
+    | Keyword of string
 
     | Node of Expression list
 
-and Pattern =
-    | Get of ExpressionType
-    | Value of Expression
-
 type RewriteRule = {
     pattern: Pattern
-    replacement: Expression list -> Expression
+    replacer: Expression list -> Expression
 }
 
 type Program = {

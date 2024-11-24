@@ -31,9 +31,12 @@ let rec toExpression (x: obj) =
 let rec private toPattern (x: obj) =
     match x with
     | :? Pattern as p -> p
-    | :? ExpressionType as et -> Get et
-    | :? Expression as e -> Value e
-    | _ -> try Value (toExpression x) with | Failure(_) -> failwithf "Expected pattern-compatible object, got %A" x
+    | :? bool as b -> PBoolValue b
+    | :? int as i -> PIntegerValue i
+    | :? float as f -> PFloatValue f
+    | :? string as s -> PKeywordValue s
+    | :? list<obj> as l -> PListValue (l |> List.map toPattern)
+    | _ -> failwithf "Expected pattern-compatible object, got %A" x
 
 module Args =
     let zero v (args: 'a list) = toExpression v
@@ -44,6 +47,9 @@ module Args =
     let five matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] |> toExpression
     let six matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] |> toExpression
     let seven matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] |> toExpression
+    let eight matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] |> toExpression
+    let nine matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] |> toExpression
+    let ten matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] args[9] |> toExpression
 
     let private typeError typeString item = failwithf "Expected %s, got %A" typeString item
 
@@ -75,27 +81,19 @@ module Args =
         | List l -> l
         | item -> typeError "list" item
 
-let private tnodeInner wrapperFn elements =
+let private pNodeInner wrapperFn elements =
     elements
     |> Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields
     |> Array.map toPattern
     |> List.ofArray
     |> wrapperFn
 
-let tnode elements = tnodeInner TNodeContaining elements
-let tnodeStartingWith elements = tnodeInner TNodeStartingWith elements
+let pNode elements = pNodeInner PNodeContaining elements
+//let pNodeStartingWith elements = pNodeInner PNodeStartingWith elements
 
-let GetNode t = t |> tnode |> Get
-let GetNodeStartingWith t = t |> tnodeStartingWith |> Get
-
-let private nodeInner exprFunc elements = 
+let node elements = 
     elements
     |> Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields
-    |> Array.map exprFunc
+    |> Array.map toExpression
     |> List.ofArray
     |> Node
-
-let nodeAsPattern elements = nodeInner toExpression elements
-let node elements = nodeInner toExpression elements
-
-let ValueNode t = t |> nodeAsPattern |> Value

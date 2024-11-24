@@ -5,12 +5,12 @@ open Clac3.BuiltIn
 
 let customRules: RewriteRule list = [
     {
-        pattern = ValueNode ("factorial", 0)
-        replacement = Args.zero 1
+        pattern = pNode ("factorial", 0)
+        replacer = Args.zero 1
     };
     {
-        pattern = GetNode ("factorial", TInteger)
-        replacement = Args.one (fun n ->
+        pattern = pNode ("factorial", PInteger)
+        replacer = Args.one (fun n ->
             node (
                 n, 
                 "*",
@@ -22,16 +22,16 @@ let customRules: RewriteRule list = [
         )
     };
     {
-        pattern = ValueNode (Keyword "fibonacci", Integer 0)
-        replacement = Args.zero 0
+        pattern = pNode ("fibonacci", 0)
+        replacer = Args.zero 0
     };
     {
-        pattern = ValueNode (Keyword "fibonacci", Integer 1)
-        replacement = Args.zero 1
+        pattern = pNode ("fibonacci", 1)
+        replacer = Args.zero 1
     };
     {
-        pattern = GetNode (Keyword "fibonacci", TInteger)
-        replacement = Args.one (fun n ->
+        pattern = pNode ("fibonacci", PInteger)
+        replacer = Args.one (fun n ->
             node (
                 node (
                     Keyword "fibonacci",
@@ -45,12 +45,17 @@ let customRules: RewriteRule list = [
             )
         )
     }
+    {
+        pattern = PVariableValue "x"
+        replacer = Args.zero (Integer 5)
+    }
 ]
 
 let dummyProgram = {
-    rewriteRules = List.append coreRuleSet customRules
+    rewriteRules = customRules // List.append coreRuleSet customRules
     freeExpressions = [
-        node (Keyword "factorial", Integer 3)
+        node("factorial", 0)
+        // node (Keyword "fibonacci", Integer 12)
     ]
 }
 

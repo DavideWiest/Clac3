@@ -2,63 +2,114 @@
 open Clac3.DomainUtil
 open Clac3.Interpreter
 open Clac3.BuiltIn
+open Clac3.Data
 
 let customRules: RewriteRule list = [
     {
-        pattern = pNode ("factorial", 0)
-        replacer = Args.zero 1
+        pattern = pNC [vKw "factorial"; vInt 0]
+        replacer = Args.zero (Integer 1)
     };
     {
-        pattern = pNode ("factorial", PInteger)
+        pattern = pNC [vKw "factorial"; pInt]
         replacer = Args.one (fun n ->
-            node (
-                n, 
-                "*",
-                node (
-                    "factorial",
-                    node (n, "-", 1)
-                )
-            )
+            Node [
+                Keyword "*";
+                n;
+                Node [
+                    Keyword "factorial";
+                    Node [
+                        n;
+                        Keyword "-";
+                        Integer 1
+                    ]
+                ]]
         )
     };
     {
-        pattern = pNode ("fibonacci", 0)
-        replacer = Args.zero 0
+        pattern = pNC [vKw "fibonacci"; vInt 0]
+        replacer = Args.zero (Integer 0)
     };
     {
-        pattern = pNode ("fibonacci", 1)
-        replacer = Args.zero 1
+        pattern = pNC [vKw "fibonacci"; vInt 1]
+        replacer = Args.zero (Integer 1)
     };
     {
-        pattern = pNode ("fibonacci", PInteger)
+        pattern = pNC [vKw "fibonacci"; pInt]
         replacer = Args.one (fun n ->
-            node (
-                node (
-                    Keyword "fibonacci",
-                    node (n, Keyword "-", Integer 1)
-                ),
-                Keyword "+",
-                node (
-                    Keyword "fibonacci",
-                    node (n, Keyword "-", Integer 2)
-                )
-            )
+            Node [
+                Node [
+                    Keyword "fibonacci";
+                    Node [
+                        n;
+                        Keyword "-";
+                        Integer 1
+                    ]
+                ];
+                Keyword "+";
+                Node [
+                    Keyword "fibonacci";
+                    Node [
+                        n;
+                        Keyword "-";
+                        Integer 2
+                    ]
+                ]
+            ]
+        )
+    };
+    {
+        pattern = pNC [vKw "fibonacciWithIf"; pInt]
+        replacer = Args.one (fun n ->
+            Node [
+                Keyword "if";
+                Node [n; Keyword "="; Integer 0]
+                Keyword "then";
+                Integer 0;
+                Keyword "else";
+                Node [
+                    Keyword "if";
+                    Node [n; Keyword "="; Integer 1]
+                    Keyword "then";
+                    Integer 1;
+                    Keyword "else";
+                    Node [
+                        Node [
+                            Keyword "fibonacciWithIf";
+                            Node [
+                                n;
+                                Keyword "-";
+                                Integer 1
+                            ]
+                        ];
+                        Keyword "+";
+                        Node [
+                            Keyword "fibonacciWithIf";
+                            Node [
+                                n;
+                                Keyword "-";
+                                Integer 2
+                            ]
+                        ]
+                    ]
+                ]
+            ]
         )
     }
     {
-        pattern = PVariableValue "x"
+        pattern = PLeaf (PVariableValue "x")
         replacer = Args.zero (Integer 5)
     }
 ]
 
 let dummyProgram = {
-    rewriteRules = customRules // List.append coreRuleSet customRules
+    rewriteRules = List.append coreRuleSet customRules
     freeExpressions = [
-        node("factorial", 0)
-        // node (Keyword "fibonacci", Integer 12)
+        //Variable "x"
+        //Node [Keyword "fibonacci"; Integer 3]
+        Node [Keyword "fibonacciWithIf"; Integer 25]
     ]
 }
+let tree = (DecisionTree.Matcher dummyProgram.rewriteRules)
+let time = Performance.measureTime (fun () -> evalProgram dummyProgram tree)
 
-let result = evalProgram dummyProgram
-
-printfn "\n---\nRESUlT:\n%A" result
+printfn "Execution time in seconds: %A" time

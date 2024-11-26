@@ -12,6 +12,7 @@
     <Compile Include="DomainUtil.fs" />
     <Compile Include="Interpreter.fs" />
     <Compile Include="BuiltIn.fs" />
+    <Compile Include="Data.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

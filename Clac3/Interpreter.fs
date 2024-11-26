@@ -1,14 +1,13 @@
 ﻿module Clac3.Interpreter
 
-open Clac3.Util
 open Clac3.Domain
 open Clac3.DomainUtil
 
-
 module DecisionTree =
     type PatternDecisionTree =
-        | LeafEdge of Pattern * (Expression list -> Expression) // any leaf pattern
+        | LeafEdge of LeafPattern * (Expression list -> Expression)
         | NodeEdge of NodeDecisionTree list // a node/recursive pattern
+        | AnyEdge of (Expression list -> Expression)
 
     // the first level of a faster decision tree would decide based on the length of the node
     // PDT for the head, NDT for the tail
@@ -26,6 +25,8 @@ module DecisionTree =
         | NodeEdge(nodeTrees) ->
             printfn "%sPattern node:" indentStr
             nodeTrees |> List.iter (printNodeDecisionTree (indent + 1))
+        | AnyEdge func ->
+            printfn "%sPattern any \n.    %s=> %A" indentStr indentStr func
 
     and printNodeDecisionTree (indent: int) (nodeTree: NodeDecisionTree) =
         let indentStr = String.replicate indent ".   "
@@ -41,6 +42,7 @@ module DecisionTree =
             children |> List.iter (printNodeDecisionTree (indent + 1))
 
     let getPDTSearchPriority = function
+        | NodeEdge _ -> -1
         | LeafEdge(p, _) ->
             match p with
             | PBoolValue _ -> 0
@@ -49,10 +51,6 @@ module DecisionTree =
             | PStringValue _ -> 3
             | PVariableValue _ -> 4
             | PKeywordValue _ -> 5
-            | PListValue _ -> 6
-
-            | PNodeContaining children -> failwithf "Expected a leaf pattern, got %A" children
-            //| PNodeStartingWith _ -> failwithf "Expected a leaf pattern, got %A" children
 
             | PBool -> 209
             | PInteger -> 210
@@ -62,14 +60,7 @@ module DecisionTree =
             | PKeyword -> 214
             | PList -> 215
             | PNode -> 216
-
-            | PAnyEvaluatdLeaf -> 316
-            | PAny -> 317
-        | NodeEdge _ -> 1000
-
-    let getNDTSearchPriority = function
-        | NDTLeaf _ -> 0
-        | NDTNode _ -> 1
+        | AnyEdge _ -> 2000
 
     type NodeRewriteRule = {
         patternList: Pattern list
@@ -83,8 +74,70 @@ module DecisionTree =
 
     let toNodeRewriteRule replacer children = { patternList = children; replacer = replacer }
 
+    let isAnyPattern rule =
+        match rule.pattern with
+        | PAny -> true
+        | _ -> false
+
+    let isLeafPattern rule =
+        match rule.pattern with
+        | PLeaf _ -> true
+        | _ -> false
+
+    let getLeafPattern = function
+        | PLeaf p -> p
+        | _ -> failwith "Expected leaf pattern"
+
+    let matchesLeafPattern pattern expr =
+        //printfn "MATCHING %A%s WITH %A" expr (String.replicate (30-expr.ToString().Length) " ") pattern
+        // nested match is more efficient
+        // including this in the tree would be more efficient and relatively trivial
+        match expr with
+        | Node n ->
+            match pattern with
+            | PNode -> Some n
+            | _ -> None
+        | Bool b ->
+            match pattern with
+            | PBool -> Some [Bool b]
+            | PBoolValue b2 when b = b2 -> Some []
+            | _ -> None
+        | Integer i ->
+            match pattern with
+            | PInteger -> Some [Integer i]
+            | PIntegerValue i2 when i = i2 -> Some []
+            | _ -> None
+        | Float f ->
+            match pattern with
+            | PFloat -> Some [Float f]
+            | PFloatValue f2 when f = f2 -> Some []
+            | _ -> None
+        | String s ->
+            match pattern with
+            | PString -> Some [String s]
+            | PStringValue s2 when s = s2 -> Some []
+            | _ -> None
+        | List l ->
+            match pattern with
+            | PList -> Some l
+            | _ -> None
+        | Variable v ->
+            match pattern with
+            | PVariable -> Some [Variable v]
+            | PVariableValue v2 when v = v2 -> Some []
+            | _ -> None
+        | Keyword k ->
+            match pattern with
+            | PKeyword -> Some [Keyword k]
+            | PKeywordValue k2 when k = k2 -> Some []
+            | _ -> None
+
+    let printTree tree = tree |> List.iter (printPatternDecisionTree 0)
+
     type Matcher(rules: RewriteRule list) =
-        member private this.getNDT (rules: NodeRewriteRule list) : NodeDecisionTree list =
+        let tree = Matcher.getPDT rules
+
+        static member private getNDT (rules: NodeRewriteRule list) : NodeDecisionTree list =
             if rules.Length = 0 then failwith "Got no rules for building a NDT"
 
             let emptyRules = rules |> List.filter (fun rule -> rule.patternList.Length = 0)
@@ -98,10 +151,11 @@ module DecisionTree =
                 // head must be different, but more than one rule matches
                 if leafRules.Length > 1 then failwithf "Got multiple leaf rules for the same pattern: %A" leafRules 
 
-                let pdt = this.getSinglePDT { pattern = head; replacer = leafRules[0].replacer }
-                (pdt) |> NDTLeaf |> Some
+                Matcher.getSinglePDT { pattern = head; replacer = leafRules[0].replacer }
+                |> NDTLeaf 
+                |> Some
             ) 
-                
+            
             let nodes: NodeDecisionTree list = ruleGroups |> List.choose (fun (head, rules) ->
                 let nodeRules = 
                     rules 
@@ -109,120 +163,82 @@ module DecisionTree =
                     |> List.map (fun rule -> { rule with patternList = rule.patternList.Tail })
                 if nodeRules.Length = 0 then None else
 
-                let pdt = this.getSinglePDT { pattern = head; replacer = fun _ -> failwith "Call to replacer for a pattern that is not fully matched" }
-                let ndt = this.getNDT nodeRules
+                let pdt = Matcher.getSinglePDT { pattern = head; replacer = fun _ -> failwith "Call to replacer for a pattern that is not fully matched" }
+                let ndt = Matcher.getNDT nodeRules
                 (pdt, ndt) |> NDTNode |> Some
             )
-            
-            (nodes@leaves) |> List.sortBy getNDTSearchPriority
 
-        member private this.getSinglePDT (rule: RewriteRule) =
-            match tryGetChildren rule.pattern with
-            | Some children -> 
-                let ndt = this.getNDT [{ patternList = children; replacer = rule.replacer }]
-                NodeEdge ndt
-            | None -> LeafEdge(rule.pattern, rule.replacer)
+            // no sorting necessary, as the leaves and nodes are already in order
+            leaves@nodes
 
-        member private this.getPDT (rules: RewriteRule list) : PatternDecisionTree list =
+        static member private getSinglePDT (rule: RewriteRule) =
+            let pdts = Matcher.getPDT [rule]
+            if pdts.Length <> 1 then failwithf "Expected a single PDT, got %A" pdts else pdts.Head
+
+        // improve partitioning performance here
+        static member private getPDT (rules: RewriteRule list) : PatternDecisionTree list =
             if rules.Length = 0 then failwith "Got no rules for building a PDT"
 
             let leafEdges = 
                 rules 
-                |> List.filter (fun rule -> tryGetChildren rule.pattern = None) 
-                |> List.map (fun rule -> rule.pattern, rule.replacer) 
+                |> List.filter isLeafPattern
+                |> List.map (fun rule -> getLeafPattern rule.pattern, rule.replacer) 
                 |> List.map LeafEdge
 
-            let nodeEdges = 
+            let nodeEdge = 
                 rules 
                 |> List.choose (fun rule -> tryGetChildren rule.pattern |> Option.map (toNodeRewriteRule rule.replacer)) 
-                |> this.getNDT
-                |> NodeEdge
+                |> fun nodeRules -> if nodeRules.Length = 0 then [] else [Matcher.getNDT nodeRules |> NodeEdge]
+            
+            let anyEdges =
+                rules
+                |> List.filter isAnyPattern
+                |> List.map (fun rule -> AnyEdge rule.replacer)
+            
+            if anyEdges.Length > 1 then failwithf "Got multiple rules that match the same pattern (ending with PAny): %A" anyEdges
 
-            nodeEdges::leafEdges |> List.sortBy getPDTSearchPriority
+            leafEdges@nodeEdge@anyEdges |> List.sortBy getPDTSearchPriority
 
-        member private this.tree = this.getPDT rules
-        member this.printTree = this.tree |> List.iter (printPatternDecisionTree 0)
+        static member private walkPDT tree argsAcc (expr: Expression) = 
+            // LeafEdge should be checked before NodeEdge, but any node must always be matched with NodeEdge, so it's ok
+            match expr with
+            | Node children ->
+                match tree with
+                | NodeEdge ndtChildren ->
+                    ndtChildren
+                    |> List.tryPick (fun childTree -> Matcher.walkNDT childTree argsAcc children)
+                | AnyEdge replacer -> Some (replacer, argsAcc@[expr])
+                | _ -> 
+                    printfn "Backtracking (  node  ) for %A" expr
+                    printPatternDecisionTree 1 tree
+                    None
+            | expr ->
+                match tree with
+                | LeafEdge(pattern, replacer) ->
+                    matchesLeafPattern pattern expr 
+                    |> Option.map (fun args -> replacer, args)
+                | AnyEdge replacer -> Some (replacer, argsAcc@[expr])
+                | _ -> 
+                    printfn "Backtracking (not node) for %A:" expr
+                    printPatternDecisionTree 1 tree
+                    None
 
-        // make this fail in some cases as the tree is being walked now
-        member private this.matchesLeafPattern pattern expr =
-            match pattern, expr with
-            | PAnyEvaluatdLeaf, Variable _
-            | PAnyEvaluatdLeaf, Node _ -> None
-
-            | PAny, _
-            | PAnyEvaluatdLeaf, _
-            | PBool, Bool _
-            | PInteger, Integer _
-            | PFloat, Float _
-            | PString, String _
-            | PList, List _
-            | PVariable, Variable _
-            | PKeyword, Keyword _
-            | PNode, Node _ -> Some [expr]
-
-            | PBoolValue b1, Bool b2 when b1 = b2 -> Some []
-            | PIntegerValue i1, Integer i2 when i1 = i2 -> Some []
-            | PFloatValue f1, Float f2 when f1 = f2 -> Some []
-            | PStringValue s1, String s2 when s1 = s2 -> Some []
-            // should probably be changed to work like node
-            | PListValue l1, List l2 -> 
-                if l1.Length <> l2.Length then None else
-
-                List.zip l1 l2 
-                |> List.map (fun (p,e) -> this.matchesLeafPattern p e)
-                |> Option.combine
-                |> Option.map List.concat
-
-            | PVariableValue v1, Variable v2 when v1 = v2 -> Some []
-            | PKeywordValue k1, Keyword k2 when k1 = k2 -> Some []
-
-            | PNodeContaining children, _ -> failwithf "Expected leaf pattern, got PNodeContaining %A" children
-            //| PNodeStartingWith tChildren, Node children -> failwithf "Expected leaf pattern, got PNodeStartingWith %A" children
-
-            | _ -> None
-
-        member this.walkPDT tree argsAcc (expr: Expression) = 
-            printfn "PATTERN DT\n    args %A\n    expr  %A" argsAcc expr
-            match tree, expr with
-            | NodeEdge patternChildren, Node children -> 
-                List.fold (fun (maybeResult: TreeResult) childTree -> 
-                    if maybeResult.IsSome 
-                    then maybeResult
-                    else 
-                        printfn "NODE CHILD" 
-                        printNodeDecisionTree 1 childTree
-                        this.walkNDT childTree argsAcc children
-                ) None patternChildren
-            | LeafEdge(pattern, replacer), expr -> 
-                printfn "PATTERN LEAF"
-                printPatternDecisionTree 1 tree
-                this.matchesLeafPattern pattern expr |> Option.map (fun args -> replacer, args)
-            | _ -> None
-
-        member this.walkNDT tree argsAcc (exprs: Expression list) =
-            printfn "NODE DT\n    args %A\n    exprs %A" argsAcc exprs
+        static member private walkNDT tree argsAcc (exprs: Expression list) =
             match tree with
             | NDTLeaf(patternTree) -> 
                 if exprs.Length <> 1 then None else
-                printfn "NODE LEAF"
-                printPatternDecisionTree 1 patternTree
-                this.walkPDT patternTree argsAcc exprs[0] |> Option.map (fun treeResult -> treeResult |> fst, argsAcc@(treeResult |> snd))
-            | NDTNode(patternTree, children) -> 
-                match this.walkPDT patternTree argsAcc exprs[0] with
-                | Some (_, args) -> 
-                    List.fold (fun maybeResult childTree -> 
-                        if maybeResult.IsSome 
-                        then maybeResult 
-                        else 
-                            printfn "NODE CHILD" 
-                            printNodeDecisionTree 1 childTree
-                            this.walkNDT childTree args exprs[1..]
-                    ) None children
-                | None -> None
+                Matcher.walkPDT patternTree argsAcc exprs[0] 
+                |> Option.map (fun treeResult -> treeResult |> fst, argsAcc@(treeResult |> snd))
+            | NDTNode(patternTree, childTrees) ->
+                Matcher.walkPDT patternTree argsAcc exprs[0]
+                |> Option.bind (fun (_, args) ->
+                    childTrees
+                    |> List.tryPick (fun childTree -> Matcher.walkNDT childTree (argsAcc@args) exprs[1..])
+                )
 
         member this.tryGetReplacementFor expr = 
-            printfn "REPLACING %A" expr
-            List.fold (fun (maybeResult: TreeResult) childTree -> if maybeResult.IsSome then maybeResult else this.walkPDT childTree [] expr) None this.tree
+            tree
+            |> List.tryPick (fun childTree -> Matcher.walkPDT childTree [] expr)
             |> Option.map (fun (replacer, args) -> replacer args)
       
 module Evaluator =
@@ -242,6 +258,7 @@ module Evaluator =
         | _ -> false
 
     let rec eval (tree: DecisionTree.Matcher) childEvalI (expr: Expression) =
+        printfn "eval: %A" expr
         // if the expression is a leaf but not a variable, it is already evaluated
         if isDefined expr then expr else
 
@@ -267,7 +284,8 @@ module Evaluator =
                     |> eval tree (nextEvalChildI+1)
             | _ -> expr
 
-let evalProgram p = 
-    let decisioinTree = DecisionTree.Matcher(p.rewriteRules)
-    decisioinTree.printTree
-    p.freeExpressions |> List.map (Evaluator.eval decisioinTree 0)
+let evalProgram p tree = 
+    p.freeExpressions |> List.map (Evaluator.eval tree 0)
+
+let runProgram pRaw = 
+    evalProgram pRaw (DecisionTree.Matcher pRaw.rewriteRules)

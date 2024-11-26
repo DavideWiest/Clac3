@@ -4,7 +4,6 @@ open Clac3.Domain
 open Clac3.DomainUtil
 open Clac3.Representation
 
-// TODO: rule order? 1) by probability of matching 2) by 
 // NOTE: rules should be defined so that all the defined values come first - like in the if-then-else rule
 //  the expressions are evaluated depth first from left to right
 //  in boolean algebra, it would be a lot more efficient to compute the simpler expressions first
@@ -13,10 +12,50 @@ open Clac3.Representation
 // NOTE: rules should be maximally nested to speed up matching
 // NOTE: at some point, the expression has to be evaluated. recursive rules should not have a expression-catching block, as they need it evaluated, or it will lead to infinite recursion
 
+module Helper = 
+    let definedValues = [pBo; pInt; pFl; pStr; pLi]
+
+    let buildArithmeticRuleSetInfixOp op opInt opFloat = [
+        {
+            pattern = pNC [pInt; vKw op; pInt]
+            replacer = Args.two (fun a b -> opInt (Args.getInt a) (Args.getInt b))
+        }
+        {
+            pattern = pNC [pFl; vKw op; pFl]
+            replacer = Args.two (fun a b -> opFloat (Args.getFloat a) (Args.getFloat b))
+        }
+        {
+            pattern = pNC [pFl; vKw op; pInt]
+            replacer = Args.two (fun a b -> opFloat (Args.getFloat a) (float (Args.getInt b)))
+        }
+        {
+            pattern = pNC [pInt; vKw op; pFl]
+            replacer = Args.two (fun a b -> opFloat (float (Args.getInt a)) (Args.getFloat b))
+        }
+    ]
+
+    let buildEvaluatedValueRuleSetInfixOp op replacement = 
+        List.allPairs definedValues definedValues
+        |> List.map (fun (a, b) -> 
+            {
+                pattern = pNC [a; vKw op; b]
+                replacer = replacement
+            }
+        )
+
+    let buildEvaluatedValueRulePrefixOp op replacement = 
+        definedValues
+        |> List.map (fun a -> 
+            {
+                pattern = pNC [vKw op; a]
+                replacer = replacement
+            }
+        )
+
 // DENESTING
 let denestingRules = [
     {
-        pattern = PNodeContaining [PAny]
+        pattern = pNC [pAny]
         replacer = Args.one (fun item -> item)
     }
 ]
@@ -24,67 +63,47 @@ let denestingRules = [
 // CONTROL FLOW
 let controlFlowRules = [
     {
-        pattern = pNode ("if", PBool, "then", PAny, "else", PAny)
-        replacer = Args.three (fun cond thenExpr elseExpr -> Args.getBool cond |> fun b -> if b then thenExpr else elseExpr)
+        pattern = pNC [vKw "if"; pBo; vKw "then"; pAny; vKw "else"; pAny]
+        replacer = Args.three (fun cond thenExpr elseExpr -> 
+            printfn "cond: %A" cond 
+            printfn "thenExpr: %A" thenExpr
+            printfn "elseExpr: %A" elseExpr
+            if Args.getBool cond then thenExpr else elseExpr
+        )
     }
     {
-        pattern = pNode (PAny, "|>", PNode)
+        pattern = pNC [pAny; vKw "|>"; pN]
         replacer = Args.two (fun part1 part2 -> Args.getNode part2 |> fun nodePart -> Node (nodePart@[part1]))
     }
 ]
 
 // LOGIC
-let logicRules = [
+let logicRules = 
+    Helper.buildEvaluatedValueRuleSetInfixOp "=" (Args.two (fun left right -> Bool (left = right)))
+    @ Helper.buildEvaluatedValueRuleSetInfixOp "<>" (Args.two (fun left right -> Bool (left <> right)))
+
+// BOOLEAN ALGEBRA
+let booleanRules = [
     {
-        pattern = pNode (PAnyEvaluatdLeaf, "=", PAnyEvaluatdLeaf)
-        replacer = Args.two (fun left right -> Bool (left = right))
-    }
-    {
-        pattern = pNode (PAnyEvaluatdLeaf, "<>", PAnyEvaluatdLeaf)
-        replacer = Args.two (fun left right -> Bool (left <> right))
-    }
-    {
-        pattern = pNode (PBool, "&", PBool)
+        pattern = pNC [pBo; vKw "&"; pBo]
         replacer = Args.two (fun a b -> Bool (Args.getBool a && Args.getBool b))
     }
     {
-        pattern = pNode (PBool, "|", PBool)
+        pattern = pNC [pBo; vKw "|"; pBo]
         replacer = Args.two (fun a b -> Bool (Args.getBool a || Args.getBool b))
     }
     {
-        pattern = pNode ("!", PBool)
+        pattern = pNC [vKw "!"; pBo]
         replacer = Args.one (fun a -> Bool (not (Args.getBool a)))
     }
 ]
 
 // REFLECTION
-let reflectionRules = [
+let reflectionRules = Helper.buildEvaluatedValueRulePrefixOp "typeof" (Args.one (fun expr -> String (expr.GetType().Name))) @ [
+    
     {
-        pattern = pNode ("typeof", PAnyEvaluatdLeaf)
-        replacer = Args.one (fun expr -> expr.GetType().Name)
-    }
-    {
-        pattern = pNode ("stringify", PAny)
-        replacer = Args.one (fun expr -> ToString.expression expr)
-    }
-]
-
-let buidArtihmeticRuleSet op opInt opFloat = [
-    {
-        pattern = pNode (PInteger, op, PInteger)
-        replacer = Args.two (fun a b -> opInt (Args.getInt a) (Args.getInt b))
-    }
-    {
-        pattern = pNode (PFloat, op, PFloat)
-        replacer = Args.two (fun a b -> opFloat (Args.getFloat a) (Args.getFloat b))
-    }
-    {
-        pattern = pNode (PFloat, op, PInteger)
-        replacer = Args.two (fun a b -> opFloat (Args.getFloat a) (float (Args.getInt b)))
-    }
-    {
-        pattern = pNode (PInteger, op, PFloat)
-        replacer = Args.two (fun a b -> opFloat (float (Args.getInt a)) (Args.getFloat b))
+        pattern = pNC [vKw "stringify"; pAny]
+        replacer = Args.one (fun expr -> expr |> ToString.expression |> String)
     }
 ]
 
@@ -97,28 +116,29 @@ let arithmeticRules =
         "/", (/), (/)
         "**", pown, ( ** )
     ] 
-    |> List.collect (fun (op, opInt, opFloat) -> buidArtihmeticRuleSet op opInt opFloat)
+    |> List.collect (fun (op, opInt, opFloat) -> Helper.buildArithmeticRuleSetInfixOp op (fun a b -> opInt a b |> Integer) (fun a b -> opFloat a b |> Float))
 
 // LISTS
 let listRules = [
     {
-        pattern = pNode (PList, "+", PList)
-        replacer = Args.two (fun a b -> Args.getNode a @ Args.getNode b)
+        pattern = pNC [pLi; vKw "+"; pLi]
+        replacer = Args.two (fun a b -> Args.getList a @ Args.getList b |> List)
     }
     {
-        pattern = pNode (PList, "::", PAny)
-        replacer = Args.two (fun a b -> (Args.getList a)@[b])
+        pattern = pNC [pLi; vKw "::"; pAny]
+        replacer = Args.two (fun a b -> Args.getList a @ [b] |> List)
     }
     {
-        pattern = pNode (PAny, "::", PList)
-        replacer = Args.two (fun a b -> b::(Args.getList a))
+        pattern = pNC [pAny; vKw "::"; pLi]
+        replacer = Args.two (fun a b -> b :: Args.getList a |> List)
     }
     {
-        pattern = pNode (PList, "map", PNode)
+        pattern = pNC [pLi; vKw "map"; pN]
         replacer = Args.two (fun listExpr mapExpr -> 
-            Args.getList listExpr 
-            |> List.map (fun item -> (Args.getNode mapExpr) @ [item])
-            |> List.map node
+            Args.getList listExpr
+            |> List.map (fun item -> Args.getNode mapExpr @ [item])
+            |> List.map Node
+            |> List
         )
     }
 ]
@@ -127,9 +147,9 @@ let listRules = [
 let stringRules = [
     {
         pattern = pNode (PString, "+", PString)
-        replacer = Args.two (fun a b -> Args.getString a + Args.getString b)
+        replacer = Args.two (fun a b -> Args.getString a + Args.getString b |> String)
     }
 ]
 
 let coreRuleSet =
-    denestingRules @ controlFlowRules @ logicRules @ reflectionRules @ arithmeticRules @ listRules @ stringRules
+    denestingRules @ controlFlowRules @ logicRules @ booleanRules @ reflectionRules @ arithmeticRules @ listRules @ stringRules

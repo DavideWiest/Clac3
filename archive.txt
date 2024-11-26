@@ -1,0 +1,14 @@
+module Restructure =
+    let rec pattern = function
+        | PNodeContaining children -> List.map pattern children |> List.sortBy getPatternDefinitionOrder |> PNodeContaining
+        | p -> p
+
+    let rec expression = function
+        | Node children -> List.map expression children |> List.sortBy getDefinitionOrder |> Node
+        | expr -> expr
+
+    let rule rule = 
+        { pattern = pattern rule.pattern; replacer = expression rule.replacer }
+
+    let program (program: Program) =
+        { rewriteRules = List.map rule program.rewriteRules; freeExpressions = List.map expression program.freeExpressions }

@@ -1,24 +1,27 @@
 ﻿module Clac3.Domain
 
-type Pattern =
-    | PAny
-    | PAnyEvaluatdLeaf // any leaf that's not a variable
+type LeafPattern = 
     | PBool
     | PInteger
     | PFloat
     | PString
     | PList
-    | PVariable
-    | PKeyword
+    | PVariable // not really necessary
+    | PKeyword // not really necessary
+
     | PNode
 
     | PBoolValue of bool
     | PIntegerValue of int
     | PFloatValue of float
     | PStringValue of string
-    | PListValue of Pattern list
     | PVariableValue of string // PVariable has to exist, because variables exist
     | PKeywordValue of string
+
+and Pattern =
+    | PAny
+    | PLeaf of LeafPattern
+    | PListValue of Pattern list
     | PNodeContaining of Pattern list
     // not yet implemented in the interpreter
     //| PNodeStartingWith of Pattern list

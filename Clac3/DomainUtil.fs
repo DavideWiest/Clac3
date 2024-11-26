@@ -31,25 +31,46 @@ let rec toExpression (x: obj) =
 let rec private toPattern (x: obj) =
     match x with
     | :? Pattern as p -> p
-    | :? bool as b -> PBoolValue b
-    | :? int as i -> PIntegerValue i
-    | :? float as f -> PFloatValue f
-    | :? string as s -> PKeywordValue s
+    | :? LeafPattern as l -> PLeaf l
+    | :? bool as b -> PLeaf (PBoolValue b)
+    | :? int as i -> PLeaf (PIntegerValue i)
+    | :? float as f -> PLeaf (PFloatValue f)
+    | :? string as s -> PLeaf (PKeywordValue s)
     | :? list<obj> as l -> PListValue (l |> List.map toPattern)
     | _ -> failwithf "Expected pattern-compatible object, got %A" x
 
+let pAny = PAny
+let pNC = PNodeContaining
+
+let pBo = PLeaf PBool
+let pInt = PLeaf PInteger
+let pFl = PLeaf PFloat
+let pStr = PLeaf PString
+let pLi = PLeaf PList
+let pVar = PLeaf PVariable
+let pKw = PLeaf PKeyword
+
+let pN = PLeaf PNode
+
+let vBo = PBoolValue >> PLeaf
+let vInt = PIntegerValue >> PLeaf
+let vFl = PFloatValue >> PLeaf
+let vStr = PStringValue >> PLeaf
+let vVar = PVariableValue >> PLeaf
+let vKw = PKeywordValue >> PLeaf
+
 module Args =
-    let zero v (args: 'a list) = toExpression v
-    let one matcher (args: 'a list) = matcher args[0] |> toExpression
-    let two matcher (args: 'a list) = matcher args[0] args[1] |> toExpression
-    let three matcher (args: 'a list) = matcher args[0] args[1] args[2] |> toExpression
-    let four matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] |> toExpression
-    let five matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] |> toExpression
-    let six matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] |> toExpression
-    let seven matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] |> toExpression
-    let eight matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] |> toExpression
-    let nine matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] |> toExpression
-    let ten matcher (args: 'a list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] args[9] |> toExpression
+    let zero v _ = v
+    let one matcher (args: Expression list) = matcher args[0]
+    let two matcher (args: Expression list) = matcher args[0] args[1]
+    let three matcher (args: Expression list) = matcher args[0] args[1] args[2]
+    let four matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3]
+    let five matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4]
+    let six matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5]
+    let seven matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6]
+    let eight matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7]
+    let nine matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8]
+    let ten matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] args[9]
 
     let private typeError typeString item = failwithf "Expected %s, got %A" typeString item
 

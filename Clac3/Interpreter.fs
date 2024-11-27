@@ -9,19 +9,25 @@ module DecisionTree =
         any: Replacer option
     }
 
+    and MaybeValueDecisionTree<'a> = ValueDecisionTree<'a> option
+
     and LeafDecisionTree = {
-        bool: ValueDecisionTree<bool> option
-        integer: ValueDecisionTree<int> option
-        float: ValueDecisionTree<float> option
-        string: ValueDecisionTree<string> option
-        variable: ValueDecisionTree<string> option
-        keyword: ValueDecisionTree<string> option
+        bool: MaybeValueDecisionTree<bool>
+        integer: MaybeValueDecisionTree<int>
+        float: MaybeValueDecisionTree<float>
+        string: MaybeValueDecisionTree<string>
+        variable: MaybeValueDecisionTree<string>
+        keyword: MaybeValueDecisionTree<string>
+    }
+
+    and NodeDecisionTree = {
+        next: (PatternDecisionTree * NodeDecisionTree) list // grouped by same head
     }
 
     and PatternDecisionTree = {
-        leaf: ValueDecisionTree<LeafDecisionTree> option
-        list: ValueDecisionTree<PatternDecisionTree list> option
-        node: ValueDecisionTree<PatternDecisionTree list> option
+        leaf: MaybeValueDecisionTree<LeafDecisionTree>
+        list: MaybeValueDecisionTree<NodeDecisionTree>
+        node: MaybeValueDecisionTree<NodeDecisionTree>
     }
 
     type TreeResult = (Replacer * Expression list) option

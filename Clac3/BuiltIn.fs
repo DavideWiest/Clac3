@@ -64,12 +64,7 @@ let denestingRules = [
 let controlFlowRules = [
     {
         pattern = pNC [vKw "if"; pBo; vKw "then"; pAny; vKw "else"; pAny]
-        replacer = Args.three (fun cond thenExpr elseExpr -> 
-            printfn "cond: %A" cond 
-            printfn "thenExpr: %A" thenExpr
-            printfn "elseExpr: %A" elseExpr
-            if Args.getBool cond then thenExpr else elseExpr
-        )
+        replacer = Args.three (fun cond thenExpr elseExpr -> if Args.getBool cond then thenExpr else elseExpr)
     }
     {
         pattern = pNC [pAny; vKw "|>"; pN]

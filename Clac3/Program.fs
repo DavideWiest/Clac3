@@ -13,8 +13,8 @@ let customRules: RewriteRule list = [
         pattern = pNC [vKw "factorial"; pInt]
         replacer = Args.one (fun n ->
             Node [
-                Keyword "*";
                 n;
+                Keyword "*";
                 Node [
                     Keyword "factorial";
                     Node [
@@ -105,11 +105,11 @@ let dummyProgram = {
     rewriteRules = List.append coreRuleSet customRules
     freeExpressions = [
         //Variable "x"
-        //Node [Keyword "fibonacci"; Integer 3]
+        //Node [Keyword "fibonacci"; Integer 25]
         Node [Keyword "fibonacciWithIf"; Integer 25]
     ]
 }
-let tree = (DecisionTree.Matcher dummyProgram.rewriteRules)
-let time = Performance.measureTime (fun () -> evalProgram dummyProgram tree)
+let args = getEvalArgs dummyProgram
+let time = Performance.measureTime (fun () -> evalProgram args)
 
-printfn "Execution time in seconds: %A" time
+printfn "Result: %A" time

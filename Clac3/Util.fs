@@ -11,3 +11,12 @@ module Option =
     let combine options = combineInner (Some []) options
 
     let tupleWith v option = option |> Option.map (fun optionV -> v,optionV)
+
+module List = 
+    let headOption = function
+        | [] -> None
+        | h::_ -> Some h
+
+    let toOption = function
+        | [] -> None
+        | l -> Some l

@@ -1,45 +1,40 @@
 ﻿module Clac3.Domain
 
+type PatternValue<'a> = 
+    | Value of 'a
+    | Any
+
 type LeafPattern = 
-    | PBool
-    | PInteger
-    | PFloat
-    | PString
-    | PList
-    | PVariable // not really necessary
-    | PKeyword // not really necessary
+    | PBool of PatternValue<bool>
+    | PInteger of PatternValue<int>
+    | PFloat of PatternValue<float>
+    | PString of PatternValue<string>
+    | PVariable of PatternValue<string>
+    | PKeyword of PatternValue<string>
 
-    | PNode
+type Pattern =
+    | PLeaf of PatternValue<LeafPattern>
+    | PList of PatternValue<Pattern list>
+    | PNode of PatternValue<Pattern list>
 
-    | PBoolValue of bool
-    | PIntegerValue of int
-    | PFloatValue of float
-    | PStringValue of string
-    | PVariableValue of string // PVariable has to exist, because variables exist
-    | PKeywordValue of string
-
-and Pattern =
-    | PAny
-    | PLeaf of LeafPattern
-    | PListValue of Pattern list
-    | PNodeContaining of Pattern list
-    // not yet implemented in the interpreter
-    //| PNodeStartingWith of Pattern list
-    
-type Expression =
+type Atom = 
     | Bool of bool
     | Integer of int
     | Float of float
     | String of string
-    | List of Expression list
     | Variable of string
     | Keyword of string
 
+and Expression =
+    | Atom of Atom
+    | List of Expression list
     | Node of Expression list
+
+type Replacer = Expression list -> Expression
 
 type RewriteRule = {
     pattern: Pattern
-    replacer: Expression list -> Expression
+    replacer: Replacer
 }
 
 type Program = {

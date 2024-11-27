@@ -109,7 +109,7 @@ let dummyProgram = {
         Node [Keyword "fibonacciWithIf"; Integer 25]
     ]
 }
-let args = getEvalArgs dummyProgram
-let time = Performance.measureTime (fun () -> evalProgram args)
+let args = Program.getEvalArgs dummyProgram
+let time = Performance.measureTime (fun () -> Program.eval args)
 
 printfn "Result: %A" time

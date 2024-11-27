@@ -8,56 +8,27 @@ module Program =
         freeExpressions = expressions;
     }
 
-let isDefined = function
-    | Variable _
-    | Node _ -> false
-    | _ -> true
+let vLeaf = Value >> PLeaf
 
-let matchNode matcher = function
-    | Node children -> matcher children
-    | _ -> None
+let vBo = Value >> PBool >> vLeaf
+let vInt = Value >> PInteger >> vLeaf
+let vFl = Value >> PFloat >> vLeaf
+let vStr = Value >> PString >> vLeaf
+let vVar = Value >> PVariable >> vLeaf
+let vKw = Value >> PKeyword >> vLeaf
 
-let rec toExpression (x: obj) = 
-    match x with
-    | :? Expression as e -> e
-    | :? bool as b -> Bool b
-    | :? int as i -> Integer i
-    | :? float as f -> Float f
-    // strings are always keywords
-    | :? string as s -> Keyword s
-    | :? list<obj> as l -> List (l |> List.map toExpression)
-    | _ -> failwithf "Expected expression-compatible type, got %A" x
+let pBo = Any |> PBool |> vLeaf
+let pInt = Any |> PInteger |> vLeaf
+let pFl = Any |> PFloat |> vLeaf
+let pStr = Any |> PString |> vLeaf
+let pVar = Any |> PVariable |> vLeaf
+let pKw = Any |> PKeyword |> vLeaf
 
-let rec private toPattern (x: obj) =
-    match x with
-    | :? Pattern as p -> p
-    | :? LeafPattern as l -> PLeaf l
-    | :? bool as b -> PLeaf (PBoolValue b)
-    | :? int as i -> PLeaf (PIntegerValue i)
-    | :? float as f -> PLeaf (PFloatValue f)
-    | :? string as s -> PLeaf (PKeywordValue s)
-    | :? list<obj> as l -> PListValue (l |> List.map toPattern)
-    | _ -> failwithf "Expected pattern-compatible object, got %A" x
+let pLi = Any |> PList
+let pNo = Any |> PNode
 
-let pAny = PAny
-let pNC = PNodeContaining
-
-let pBo = PLeaf PBool
-let pInt = PLeaf PInteger
-let pFl = PLeaf PFloat
-let pStr = PLeaf PString
-let pLi = PLeaf PList
-let pVar = PLeaf PVariable
-let pKw = PLeaf PKeyword
-
-let pN = PLeaf PNode
-
-let vBo = PBoolValue >> PLeaf
-let vInt = PIntegerValue >> PLeaf
-let vFl = PFloatValue >> PLeaf
-let vStr = PStringValue >> PLeaf
-let vVar = PVariableValue >> PLeaf
-let vKw = PKeywordValue >> PLeaf
+let vLi = Value >> PList
+let pNC = Value >> PNode
 
 module Args =
     let zero v _ = v
@@ -101,20 +72,3 @@ module Args =
     let getList = function
         | List l -> l
         | item -> typeError "list" item
-
-let private pNodeInner wrapperFn elements =
-    elements
-    |> Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields
-    |> Array.map toPattern
-    |> List.ofArray
-    |> wrapperFn
-
-let pNode elements = pNodeInner PNodeContaining elements
-//let pNodeStartingWith elements = pNodeInner PNodeStartingWith elements
-
-let node elements = 
-    elements
-    |> Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields
-    |> Array.map toExpression
-    |> List.ofArray
-    |> Node

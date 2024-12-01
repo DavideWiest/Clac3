@@ -30,6 +30,16 @@ let pNo = Any |> PNode
 let vLi = Value >> PList
 let pNC = Value >> PNode
 
+let aBo = Bool >> Atom
+let aInt = Integer >> Atom
+let aFl = Float >> Atom
+let aStr = String >> Atom
+let aVar = Variable >> Atom
+let aKw = Keyword >> Atom
+
+let aLi = List
+let aNo = Node
+
 module Args =
     let zero v _ = v
     let one matcher (args: Expression list) = matcher args[0]
@@ -49,26 +59,30 @@ module Args =
         | Node children -> children
         | item -> typeError "node" item
 
-    let getBool = function
-        | Bool b -> b
-        | item -> typeError "bool" item
-
-    let getInt = function
-        | Integer i -> i
-        | item -> typeError "int" item
-
-    let getFloat = function
-        | Float f -> f
-        | item -> typeError "float" item
-
-    let getString = function
-        | String s -> s
-        | item -> typeError "string" item
-
-    let getVariable = function
-        | Variable v -> v
-        | item -> typeError "variable" item
-
     let getList = function
         | List l -> l
         | item -> typeError "list" item
+
+    let getBool = function
+        | Atom (Bool b) -> b
+        | item -> typeError "bool" item
+
+    let getInt = function
+        | Atom (Integer i) -> i
+        | item -> typeError "int" item
+
+    let getFloat = function
+        | Atom (Float f) -> f
+        | item -> typeError "float" item
+
+    let getString = function
+        | Atom (String s) -> s
+        | item -> typeError "string" item
+
+    let getVariable = function
+        | Atom (Variable v) -> v
+        | item -> typeError "variable" item
+
+    let getKeyword = function
+        | Atom (Keyword kw) -> kw
+        | item -> typeError "keyword" item

@@ -13,8 +13,8 @@ open Clac3.Representation
 // NOTE: at some point, the expression has to be evaluated. recursive rules should not have a expression-catching block, as they need it evaluated, or it will lead to infinite recursion
 
 module Helper = 
-    let leafAny = [pBo; pInt; pFl; pStr; pLi]
-    let firstLevelAny = [PLeaf Any; PList Any; PNode Any]
+    let leafAny = [pBo; pInt; pFl; pStr; pLi] // DEPENDENCY: Atom
+    let firstLevelAny = [PAtom Any; PList Any; PNode Any] // DEPENDENCY: Expression, ExpressionPattern
 
     let buildArithmeticRuleSetInfixOp op opInt opFloat = [
         {
@@ -47,25 +47,21 @@ module Helper =
             { pattern = pNC [vKw op; a]; replacer = replacement }
         )
 
-    let buildForAnyOneOccurrence patternBuilder replacer =
-        firstLevelAny
-        |> List.map (fun a -> 
-            { pattern = patternBuilder a; replacer = replacer }
-        )
-
-    let buildForAnyTwoOccurences patternBuilder replacer =
-        List.allPairs firstLevelAny firstLevelAny
-        |> List.map (fun (a, b) -> 
-            { pattern = patternBuilder a b; replacer = replacer }
-        )
-
 // DENESTING
-let denestingRules = Helper.buildForAnyOneOccurrence (fun a -> pNC [a]) (Args.one (fun item -> item))
+let denestingRules = [
+    {
+        pattern = pNC [Any]
+        replacer = (Args.one (fun item -> item))
+    }
+]
 
 // CONTROL FLOW
-let controlFlowRules = 
-    Helper.buildForAnyTwoOccurences (fun a b -> pNC [vKw "if"; pBo; vKw "then"; a; vKw "else"; b]) (Args.three (fun cond thenExpr elseExpr -> if Args.getBool cond then thenExpr else elseExpr))
-
+let controlFlowRules = [
+    {
+        pattern = pNC [vKw "if"; pBo; vKw "then"; Any; vKw "else"; Any]
+        replacer = Args.three (fun cond thenExpr elseExpr -> if Args.getBool cond then thenExpr else elseExpr)
+    }
+]
 
 // LOGIC
 let logicRules = 
@@ -91,7 +87,12 @@ let booleanRules = [
 // REFLECTION
 let reflectionRules = 
     Helper.buildEvaluatedValueRulePrefixOp "typeof" (Args.one (fun expr -> aStr (expr.GetType().Name))) 
-    @ Helper.buildForAnyOneOccurrence (fun a -> pNC [vKw "stringify"; a]) (Args.one (fun expr -> expr |> ToString.expression |> aStr))
+    @ [
+    {
+        pattern = pNC [vKw "stringify"; Any]
+        replacer = Args.one (fun expr -> expr |> ToString.expression |> aStr)
+    }
+]
 
 // ARITHMETIC OPERATIONS
 let arithmeticRules = 
@@ -120,8 +121,15 @@ let listRules =
                 |> List
             )
         }
-    ] @ Helper.buildForAnyOneOccurrence (fun a -> pNC [pLi; vKw "::"; a]) (Args.two (fun a b -> Args.getList a @ [b] |> List))
-      @ Helper.buildForAnyOneOccurrence (fun a -> pNC [a; vKw "::"; pLi]) (Args.two (fun a b -> b :: Args.getList a |> List))
+        {
+            pattern = pNC [pLi; vKw "::"; Any]
+            replacer = Args.two (fun a b -> Args.getList a @ [b] |> List)
+        }
+        {
+            pattern = pNC [Any; vKw "::"; pLi]
+            replacer = Args.two (fun a b -> b :: Args.getList a |> List)
+        }
+    ]
 
 // STRINGS
 let stringRules = [
@@ -131,9 +139,12 @@ let stringRules = [
     }
 ]
 
-let functionalCompositionRules =
-    Helper.buildForAnyOneOccurrence (fun a -> pNC [a; vKw "|>"; pNo]) (Args.two (fun part1 part2 -> (Args.getNode part2)@[part1] |> aNo))
-
+let functionalCompositionRules = [
+    {
+        pattern = pNC [Any; vKw "|>"; pNo]
+        replacer = Args.two (fun part1 part2 -> (Args.getNode part2)@[part1] |> aNo)
+    }
+]
 
 let coreRuleSet =
     denestingRules @ controlFlowRules @ logicRules @ booleanRules @ reflectionRules @ arithmeticRules @ listRules @ stringRules @ functionalCompositionRules

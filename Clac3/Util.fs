@@ -11,6 +11,7 @@ module Option =
     let combine options = combineInner (Some []) options
 
     let tupleWith v option = option |> Option.map (fun optionV -> v,optionV)
+    let tupleWithRev option v = option |> Option.map (fun optionV -> optionV,v)
 
 module List = 
     let headOption = function

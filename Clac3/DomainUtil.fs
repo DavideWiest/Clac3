@@ -2,33 +2,27 @@
 
 open Clac3.Domain
 
-module Program =
-    let init rules expressions = {
-        rewriteRules = rules
-        freeExpressions = expressions;
-    }
+let vAtom = Value >> PAtom
 
-let vLeaf = Value >> PLeaf
+let vBo = Value >> PBool >> vAtom >> Value
+let vInt = Value >> PInteger >> vAtom >> Value
+let vFl = Value >> PFloat >> vAtom >> Value
+let vStr = Value >> PString >> vAtom >> Value
+let vVar = Value >> PVariable >> vAtom >> Value
+let vKw = Value >> PKeyword >> vAtom >> Value
 
-let vBo = Value >> PBool >> vLeaf
-let vInt = Value >> PInteger >> vLeaf
-let vFl = Value >> PFloat >> vLeaf
-let vStr = Value >> PString >> vLeaf
-let vVar = Value >> PVariable >> vLeaf
-let vKw = Value >> PKeyword >> vLeaf
+let pBo = Any |> PBool |> vAtom |> Value
+let pInt = Any |> PInteger |> vAtom |> Value
+let pFl = Any |> PFloat |> vAtom |> Value
+let pStr = Any |> PString |> vAtom |> Value
+let pVar = Any |> PVariable |> vAtom |> Value
+let pKw = Any |> PKeyword |> vAtom |> Value
+ 
+let pLi = Any |> PList |> Value
+let pNo = Any |> PNode |> Value
 
-let pBo = Any |> PBool |> vLeaf
-let pInt = Any |> PInteger |> vLeaf
-let pFl = Any |> PFloat |> vLeaf
-let pStr = Any |> PString |> vLeaf
-let pVar = Any |> PVariable |> vLeaf
-let pKw = Any |> PKeyword |> vLeaf
-
-let pLi = Any |> PList
-let pNo = Any |> PNode
-
-let vLi = Value >> PList
-let pNC = Value >> PNode
+let vLi = Value >> PList >> Value
+let pNC = Value >> PNode >> Value
 
 let aBo = Bool >> Atom
 let aInt = Integer >> Atom

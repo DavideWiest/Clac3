@@ -3,18 +3,21 @@
 open Clac3.Domain
 
 module rec ToString =
-    let expressionInner = function
+    let atom = function
         | Integer i -> string i
         | Float f -> string f
         | Bool b -> string b
         | String s -> "\"" + s + "\""
-        | List l -> l |> List.map expression |> String.concat ", " |> inSquareParans
         | Variable r -> "$" + r
         | Keyword k -> k
 
+    let expressionInner = function
+        | Atom a -> atom a
+        | List l -> l |> List.map expression |> String.concat ", " |> inSquareParans
         | Node children -> children |> node |> inParans
 
     let expression = function
+        | List l-> l |> List.map expression |> String.concat ", " |> inSquareParans
         | Node children -> node children
         | expr -> expressionInner expr
 

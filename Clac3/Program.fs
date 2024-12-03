@@ -2,13 +2,15 @@
 open Clac3.DomainUtil
 open Clac3.Application
 open Clac3.BuiltIn
+open Clac3.DecisionTree
+open Clac3.Testing
 open Clac3.Data
 
 let customRules: RewriteRule list = [
     {
         pattern = pNC [vKw "factorial"; vInt 0]
         replacer = Args.zero (aInt 1)
-    };
+    }
     {
         pattern = pNC [vKw "factorial"; pInt]
         replacer = Args.one (fun n ->
@@ -24,15 +26,19 @@ let customRules: RewriteRule list = [
                     ]
                 ]]
         )
-    };
+    }
+    {
+        pattern = Value (PAtom (Value (PVariable (Value "x"))))
+        replacer = Args.zero (aInt 5)
+    }
     {
         pattern = pNC [vKw "fibonacci"; vInt 0]
         replacer = Args.zero (aInt 0)
-    };
+    }
     {
         pattern = pNC [vKw "fibonacci"; vInt 1]
         replacer = Args.zero (aInt 1)
-    };
+    }
     {
         pattern = pNC [vKw "fibonacci"; pInt]
         replacer = Args.one (fun n ->
@@ -56,7 +62,7 @@ let customRules: RewriteRule list = [
                 ]
             ]
         )
-    };
+    }
     {
         pattern = pNC [vKw "fibonacciWithIf"; pInt]
         replacer = Args.one (fun n ->
@@ -95,10 +101,6 @@ let customRules: RewriteRule list = [
             ]
         )
     }
-    {
-        pattern = Value (PAtom (Value (PVariable (Value "x"))))
-        replacer = Args.zero (aInt 5)
-    }
 ]
 
 let dummyProgram = {
@@ -106,10 +108,12 @@ let dummyProgram = {
     freeExpressions = [
         //Atom (Variable "x")
         //Node [aKw "fibonacci"; aInt 25]
-        Node [aKw "fibonacciWithIf"; aInt 25]
+        Node [aKw "fibonacciWithIf"; aInt 25] // test performance of if statements vs pattern matching
     ]
 }
-let args = Application.getEvalArgs dummyProgram
-let time = Performance.measureTime (fun () -> Application.eval args)
 
+ToString.firstLevel ((Builder testProgram.rewriteRules).constructTree) |> printfn "%s"
+
+let args = Application.getEvalArgs testProgram
+let time = Performance.measureTime (fun () -> Application.eval args)
 printfn "Result: %A" time

@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Clac3": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}

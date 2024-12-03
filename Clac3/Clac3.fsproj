@@ -14,6 +14,7 @@
     <Compile Include="Interpreter.fs" />
     <Compile Include="Application.fs" />
     <Compile Include="BuiltIn.fs" />
+    <Compile Include="Testing.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

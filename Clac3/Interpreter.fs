@@ -1,6 +1,7 @@
 ﻿module Clac3.Interpreter
 
 open Clac3.Domain
+open Clac3.Representation
 open Clac3.DecisionTree
     
 let private isDefined = function
@@ -26,11 +27,13 @@ let private isBreadthFirst = function
     | Node (Atom (Keyword "if")::_) -> true
     | _ -> false
 
-let rec evalExpr (tree: DecisionTree.Walker) childEvalI (expr: Expression) =
+let rec evalExpr (tree: Walker) childEvalI (expr: Expression) =
     // if the expression is a leaf but not a variable, it is already evaluated
     if isDefined expr then expr else
 
+    printfn "evaluating %A" (ToString.expression expr)
     let nextChildEvalI = getNextEvalChildIExpr expr childEvalI
+
     // breadth first (ie pattern matching on current expr) search if necessary, 
     // otherwise depth first (ie evaluating children first) if there are any unevaluated children
     let maybeNewExpr = if isBreadthFirst expr || nextChildEvalI = None then tree.tryReplace expr else None

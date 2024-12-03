@@ -1,6 +1,7 @@
 ﻿module Clac3.DomainUtil
 
 open Clac3.Domain
+open Clac3.Representation
 
 let vAtom = Value >> PAtom
 
@@ -46,6 +47,10 @@ module Args =
     let eight matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7]
     let nine matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8]
     let ten matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] args[9]
+
+    let printAndPass (args: Expression list) = 
+        printfn "args: %A" (args |> List.map ToString.expression)
+        args
 
     let private typeError typeString item = failwithf "Expected %s, got %A" typeString item
 

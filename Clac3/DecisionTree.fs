@@ -24,8 +24,8 @@ type LeafDecisionTree = {
 
 type NodeDecisionTree = {
     // grouped by same head
-    value: (FirstLevelPattern * NodeDecisionTree) list
-    ending: Replacer option
+    value: (FirstLevelPattern * NodeDecisionTree) list // includes placeholder replacer
+    ending: FirstLevelPattern option // includes correct replacer
     //collector: Replacer option // like any but includes all the remining children instead of one
 }
     
@@ -39,11 +39,6 @@ and FirstLevelPattern = PatternWrapper<ExpressionDecisionTree option>
 
 type TreeResult = (Replacer * Expression list) option
 
-type NodeRewriteRule = {
-    patternList: Pattern list
-    replacer: Replacer
-}
-
 module ToString = 
     let getPadding indent = String.replicate indent ".   "
     let formatStructNone indent (values: (string * (string option)) list) =
@@ -52,65 +47,63 @@ module ToString =
         |> List.choose (fun (n,v) -> if v.IsNone then None else Some (sprintf "%s%s\n%s%s" (getPadding indent) n (getPadding indent) v.Value))
         |> String.concat "\n"
 
-    let replacerToString indent (replacer: Replacer option) = replacer |> Option.map (sprintf "%s%A" (getPadding indent))
+    let replacer indent replacer = sprintf "%s%A" (getPadding indent) replacer
+    let maybeReplacer indent (replacerVal: Replacer option) = replacerVal |> Option.map (replacer indent) 
 
     let applyToPatternWrapper indent f (patternWrapper: PatternWrapper<'a>) = 
         formatStructNone indent [
             "value", patternWrapper.value |> f |> Some
-            "any", replacerToString indent patternWrapper.any
+            "any", maybeReplacer indent patternWrapper.any
         ]
 
-    let maybePatternMapToString indent (maybePatternMap: MaybePatternMap<'a> when 'a: comparison) =
+    let maybePatternMap indent (maybePatternMap: MaybePatternMap<'a> when 'a: comparison) =
         match maybePatternMap with
         | Some mapWrapper ->
             formatStructNone indent [
                 "map", sprintf "%s%A" (getPadding indent) mapWrapper.value |> Some
-                "any", replacerToString indent mapWrapper.any
+                "any", maybeReplacer indent mapWrapper.any
             ]
             |> Some
         | None -> None
 
-    let leafDecisionTreeToString indent (tree: LeafDecisionTree) =
+    let leafDecisionTree indent (tree: LeafDecisionTree) =
         formatStructNone indent [
-            "bool", maybePatternMapToString (indent+1) tree.bool
-            "integer", maybePatternMapToString (indent+1) tree.integer
-            "float", maybePatternMapToString (indent+1) tree.float
-            "string", maybePatternMapToString (indent+1) tree.string
-            "variable", maybePatternMapToString (indent+1) tree.variable
-            "keyword", maybePatternMapToString (indent+1) tree.keyword
+            "bool", maybePatternMap (indent+1) tree.bool
+            "integer", maybePatternMap (indent+1) tree.integer
+            "float", maybePatternMap (indent+1) tree.float
+            "string", maybePatternMap (indent+1) tree.string
+            "variable", maybePatternMap (indent+1) tree.variable
+            "keyword", maybePatternMap (indent+1) tree.keyword
         ]
 
-    let rec nodeDecisionTreeToString indent (nodeTree: NodeDecisionTree) =
+    let rec nodeDecisionTree indent (nodeTree: NodeDecisionTree) =
         let valueString =
             nodeTree.value
-            |> List.map (fun (pattern, subTree) -> sprintf "%s?\n%s\n%s=>\n%s%s)" (getPadding indent) (firstLevelPatternToString indent pattern) (getPadding indent) (getPadding indent) (nodeDecisionTreeToString (indent+1) subTree))
+            |> List.map (fun (pattern, subTree) -> sprintf "%s?\n%s\n%s=>\n%s%s)" (getPadding indent) (firstLevelPattern indent pattern) (getPadding indent) (getPadding indent) (nodeDecisionTree (indent+1) subTree))
             |> String.concat (sprintf "\n%s---\n" (getPadding indent))
 
         formatStructNone indent [
             "value", sprintf "%s" valueString |> Some
-            "ending", replacerToString indent nodeTree.ending
+            "ending", nodeTree.ending |> Option.map (firstLevelPattern (indent+1))
         ]
 
-    and expressionDecisionTreeToString indent (exprTree: ExpressionDecisionTree) =
+    and expressionDecisionTree indent (exprTree: ExpressionDecisionTree) =
         formatStructNone indent [
-            "atom", exprTree.atom |> Option.map (applyToPatternWrapper indent (leafDecisionTreeToString indent))
-            "list", exprTree.list |> Option.map (applyToPatternWrapper indent (nodeDecisionTreeToString indent))
-            "node", exprTree.node |> Option.map (applyToPatternWrapper indent (nodeDecisionTreeToString indent))
+            "atom", exprTree.atom |> Option.map (applyToPatternWrapper indent (leafDecisionTree indent))
+            "list", exprTree.list |> Option.map (applyToPatternWrapper indent (nodeDecisionTree indent))
+            "node", exprTree.node |> Option.map (applyToPatternWrapper indent (nodeDecisionTree indent))
         ]
 
-    and firstLevelPatternToString (indent: int) (pattern: FirstLevelPattern) =
+    and firstLevelPattern (indent: int) (pattern: FirstLevelPattern) =
         formatStructNone indent [
-            "value", pattern.value |> Option.map (expressionDecisionTreeToString (indent+1))
-            "any", replacerToString indent pattern.any
+            "value", pattern.value |> Option.map (expressionDecisionTree (indent+1))
+            "any", maybeReplacer indent pattern.any
         ]
 
-    let firstLevel pattern = firstLevelPatternToString 0 pattern
-
-let toNodeRewriteRule replacer children = { patternList = children; replacer = replacer }
+    let firstLevel pattern = firstLevelPattern 0 pattern
 
 let ifEmptyNoneElseApply f (l: 'a list) = if l.Length = 0 then None else f l |> Some
 
-// TODO
 type Builder(allRules: RewriteRule list) =
     static member private separateAnyFromValueBased ruleGroupStr (rules: (PatternUnion<'a> * Replacer) list) =
         let valueRules = rules |> List.choose (fun (pattern, replacer) -> 
@@ -164,15 +157,19 @@ type Builder(allRules: RewriteRule list) =
 
     // Lists and Nodes
     static member private buildNodeInner (rules: (Pattern list * Replacer) list) =
+        let rulesEnding, rulesContinuing = 
+            rules 
+            |> List.filter (fun (pattern, _) -> pattern.Length > 0) 
+            |> List.partition (fun (pattern: Pattern list, _) -> pattern.Length = 1)
 
-        let rulesEnding, rulesContinuing = List.partition (fun (pattern: Pattern list, _) -> pattern.Length = 0) rules
         if rulesEnding.Length > 1 then failwithf "Got multiple rules that match the same pattern: %A" rulesEnding
 
-        let leaf = 
-            rulesEnding 
-            |> List.headOption 
-            |> Option.map snd
-
+        let ending: FirstLevelPattern option = 
+            rulesEnding
+            |> List.map (fun (pattern, replacer) -> pattern.Head, replacer)
+            |> Builder.getFirstLevelPattern
+            |> Some
+            
         let nodes = 
             rulesContinuing 
             |> List.groupBy (fun (pattern: Pattern list, _) -> pattern.Head) 
@@ -188,7 +185,7 @@ type Builder(allRules: RewriteRule list) =
                 Some (Builder.getFirstLevelPattern [failRule], Builder.buildNodeInner nodeRules)
             )
 
-        { value = nodes; ending = leaf }
+        { value = nodes; ending = ending }
 
     static member private buildNode (rules: (PatternUnion<Pattern list> * Replacer) list) =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "node" rules
@@ -224,11 +221,16 @@ type Builder(allRules: RewriteRule list) =
 type Walker(tree: FirstLevelPattern) = 
     // Atoms
     static member private tryFindInPatternMap wrapperFn (key: 'a) (patternMap: MaybePatternMap<'a>) =
+        let withoutKey replacer = replacer, []
         let withKey replacer = replacer, [key |> wrapperFn |> Atom]
+
+        printfn "key: %A" key
+        printfn "patternMap: %A" patternMap
+
         patternMap 
         |> Option.bind (fun pdt -> 
             pdt.value.TryFind key
-            |> Option.map withKey
+            |> Option.map withoutKey
             |> Option.orElse (pdt.any |> Option.map withKey)
         )
                 
@@ -248,7 +250,7 @@ type Walker(tree: FirstLevelPattern) =
 
     // Lists and Nodes
     static member private tryGetNodeTreeResultInner wrapperType (children: Expression list) (flp: FirstLevelPattern) (next: NodeDecisionTree) =
-        Walker.tryGetTreeResult flp children.Head
+        Walker.walk flp children.Head
         |> Option.bind (fun (_, args) -> 
             children.Tail |> Walker.walkNodeInner wrapperType next |> Option.map (fun (replacer, argsTail) -> replacer, (args @ argsTail))
         )
@@ -256,8 +258,12 @@ type Walker(tree: FirstLevelPattern) =
     static member private tryGetNodeTreeResult wrapperType (tree: (FirstLevelPattern * NodeDecisionTree) list) (children: Expression list) = 
         tree |> List.tryPick (fun (flp, next) -> Walker.tryGetNodeTreeResultInner wrapperType children flp next)
 
+    static member private tryWalkEnding wrapperType (maybePattern: FirstLevelPattern option) (ending: Expression) = 
+        maybePattern |> Option.bind (fun pattern -> Walker.walk pattern ending)
+
     static member private walkNodeInner wrapperType (pattern: NodeDecisionTree) (children: Expression list) = 
-        children |> Walker.tryGetNodeTreeResult wrapperType pattern.value |> Option.orElse (Option.tupleWithRev pattern.ending [wrapperType children])
+        Walker.tryWalkEnding wrapperType pattern.ending children.Head
+        |> Option.orElse (children |> Walker.tryGetNodeTreeResult wrapperType pattern.value)
 
     static member private walkNode wrapperType (children: Expression list) (pattern: PatternWrapper<NodeDecisionTree>) = 
         children |> Walker.walkNodeInner wrapperType pattern.value |> Option.orElse (Option.tupleWithRev pattern.any [wrapperType children])
@@ -272,7 +278,5 @@ type Walker(tree: FirstLevelPattern) =
         tree.value |> Option.bind (fun v -> Walker.walkExpression v expr) |> Option.orElse (Option.tupleWithRev tree.any [expr])
         
     // First level
-    static member private tryGetTreeResult tree expr : TreeResult = Walker.walk tree expr
-
-    member this.tryReplace expr = Walker.tryGetTreeResult tree expr |> Option.map (fun (replacer, args) -> replacer args)
+    member this.tryReplace expr = Walker.walk tree expr |> Option.map (fun (replacer, args) -> replacer args)
       

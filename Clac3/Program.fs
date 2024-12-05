@@ -1,8 +1,9 @@
 ﻿open Clac3.Domain
 open Clac3.DomainUtil
-open Clac3.Application
-open Clac3.BuiltIn
+open Clac3.Representation
 open Clac3.DecisionTree
+open Clac3.BuiltIn
+open Clac3.Application
 open Clac3.Testing
 open Clac3.Data
 
@@ -112,8 +113,8 @@ let dummyProgram = {
     ]
 }
 
-ToString.firstLevel ((Builder testProgram.rewriteRules).constructTree) |> printfn "%s"
+ToString.nodeDecisionTree 0 ((Builder testProgram.rewriteRules).constructTree.value.Value.node.Value.value) |> printfn "%s"
 
 let args = Application.getEvalArgs testProgram
 let time = Performance.measureTime (fun () -> Application.eval args)
-printfn "Result: %A" time
+printfn "Results: \n%s" (time |> fst |> List.map ToString.expression |> String.concat "\n")

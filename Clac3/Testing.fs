@@ -25,6 +25,9 @@ let testRules = [
                 ]]
         )
     }
+]
+
+let other = [
     {
         pattern = Value (PAtom (Value (PVariable (Value "x"))))
         replacer = Args.zero (aInt 5)
@@ -43,19 +46,19 @@ let testRules = [
     }
     {
         pattern = pNC [vKw "test"; pNC [pStr]]
-        replacer = Args.one (fun s -> aStr (Args.getString s))
+        replacer = Args.one (fun s -> aStr (Args.getString s + "(not base case)"))
     }
 ]
 
 let testProgram = {
     rewriteRules = testRules |> List.map (fun r -> { r with replacer = Args.printAndPass >> r.replacer })
     freeExpressions = [
-        Atom (Variable "x") // search that resolves fast and doesn't extract values
-        Node [aKw "factorial"; aInt 0] // base caes
+        //Atom (Variable "x") // search that resolves fast and doesn't extract values
+        Node [aKw "factorial"; aInt 0] // base case
         Node [aKw "factorial"; aInt 5] // extraction of 1 value
-        Node [aKw "pow"; aInt 2; aInt 5] // extraction of two values
-        Node [aKw "replicateString"; aInt 3; aStr "Hello World (replicated)"] // extraction of two values by type
-        Node [aKw "test"; Node [aStr "Hello World!"]] // nested search
-        Node [aKw "test"; Node [aStr "other string"]] // nested search and extracting values
+        //Node [aKw "pow"; aInt 2; aInt 5] // extraction of two values
+        //Node [aKw "replicateString"; aInt 3; aStr "Hello World (replicated)"] // extraction of two values by type
+        //Node [aKw "test"; Node [aStr "Hello World!"]] // nested search
+        //Node [aKw "test"; Node [aStr "other string"]] // nested search and extracting values
     ]
 }

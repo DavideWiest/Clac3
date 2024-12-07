@@ -3,8 +3,7 @@
 // Patterns
 type PatternUnion<'a> = 
     | Value of 'a
-    | Any
-    // | Collector
+    | Any of string // the variable name that the value is bound to
 
 type AtomPattern = 
     | PBool of PatternUnion<bool>
@@ -15,30 +14,47 @@ type AtomPattern =
     | PKeyword of PatternUnion<string>
 
 type ExpressionPattern =
-    | PAtom of PatternUnion<AtomPattern>
+    | PDefined of PatternUnion<AtomPattern>
     | PList of PatternUnion<Pattern list>
     | PNode of PatternUnion<Pattern list>
 
 and Pattern = PatternUnion<ExpressionPattern>
 
+// Signature
+
+// no keywords: they are combined and put to the front
+// no variables: they are supposed to be replaced by the value they represent before applying a rule
+
+type AtomSignature = 
+    | SBool
+    | SInteger
+    | SFloat
+    | SString
+
+type ExpressionSignature =
+    | SDefined of AtomSignature
+    | SList of ExpressionSignature list
+    | SNode of ExpressionSignature list
+
 // Expressions
-type Atom = 
+type DefinedAtom = 
     | Bool of bool
     | Integer of int
     | Float of float
     | String of string
+
+type SymbolAtom = 
     | Variable of string
     | Keyword of string
 
-and Expression =
-    | Atom of Atom
+type Expression =
+    | Defined of DefinedAtom
+    | Symbol of SymbolAtom
     | List of Expression list
     | Node of Expression list
 
 // Computation rules
-type Replacer = Expression list -> Expression
-
-type RewriteRule = {
+type Macro = {
     pattern: Pattern
-    replacer: Replacer
+    replacer: Expression
 }

@@ -5,21 +5,23 @@ open Clac3.Domain
 
 type PatternWrapper<'a> = {
     value: 'a
-    any: Replacer option
+    any: Expression option
 }
 
 type MaybePatternWrapper<'a> = PatternWrapper<'a> option
 
-type PatternMap<'a> when 'a: comparison = PatternWrapper<Map<'a, Replacer>>
-type MaybePatternMap<'a> when 'a: comparison = PatternMap<'a> option
+// it's a list because there a very few base cases, too few that a hashmap would make sense
+// there is no significant performance difference (for now)
+type PatternLeaf<'a> when 'a: comparison = PatternWrapper<('a * Expression) list>
+type MaybePatternLeaf<'a> when 'a: comparison = PatternLeaf<'a> option
 
-type LeafDecisionTree = {
-    bool: MaybePatternMap<bool>
-    integer: MaybePatternMap<int>
-    float: MaybePatternMap<float>
-    string: MaybePatternMap<string>
-    variable: MaybePatternMap<string>
-    keyword: MaybePatternMap<string>
+type AtomDecisionTree = {
+    bool: MaybePatternLeaf<bool>
+    integer: MaybePatternLeaf<int>
+    float: MaybePatternLeaf<float>
+    string: MaybePatternLeaf<string>
+    variable: MaybePatternLeaf<string>
+    keyword: MaybePatternLeaf<string>
 }
 
 type NodeDecisionTree = {
@@ -30,14 +32,14 @@ type NodeDecisionTree = {
 }
     
 and ExpressionDecisionTree = {
-    atom: MaybePatternWrapper<LeafDecisionTree>
+    atom: MaybePatternWrapper<AtomDecisionTree>
     list: MaybePatternWrapper<NodeDecisionTree>
     node: MaybePatternWrapper<NodeDecisionTree>
 }
 
 and FirstLevelPattern = PatternWrapper<ExpressionDecisionTree option>
 
-type TreeResult = (Replacer * Expression list) option
+type TreeResult = (Expression * Expression list) option
 
 module ToString = 
     let getPadding indent = String.replicate indent ".   "
@@ -48,7 +50,7 @@ module ToString =
         |> String.concat "\n"
 
     let replacer indent replacer = sprintf "%s%A" (getPadding indent) replacer
-    let maybeReplacer indent (replacerVal: Replacer option) = replacerVal |> Option.map (replacer indent) 
+    let maybeReplacer indent (replacerVal: Expression option) = replacerVal |> Option.map (replacer indent) 
 
     let applyToPatternWrapper indent f (patternWrapper: PatternWrapper<'a>) = 
         formatStructNone indent [
@@ -56,7 +58,7 @@ module ToString =
             "any", maybeReplacer indent patternWrapper.any
         ]
 
-    let maybePatternMap indent (maybePatternMap: MaybePatternMap<'a> when 'a: comparison) =
+    let maybePatternMap indent (maybePatternMap: MaybePatternLeaf<'a> when 'a: comparison) =
         match maybePatternMap with
         | Some mapWrapper ->
             formatStructNone indent [
@@ -66,7 +68,7 @@ module ToString =
             |> Some
         | None -> None
 
-    let leafDecisionTree indent (tree: LeafDecisionTree) =
+    let leafDecisionTree indent (tree: AtomDecisionTree) =
         formatStructNone indent [
             "bool", maybePatternMap (indent+1) tree.bool
             "integer", maybePatternMap (indent+1) tree.integer
@@ -104,8 +106,8 @@ module ToString =
 
 let ifEmptyNoneElseApply f (l: 'a list) = if l.Length = 0 then None else f l |> Some
 
-type Builder(allRules: RewriteRule list) =
-    static member private separateAnyFromValueBased ruleGroupStr (rules: (PatternUnion<'a> * Replacer) list) =
+type Builder(allRules: Macro list) =
+    static member private separateAnyFromValueBased ruleGroupStr (rules: (PatternUnion<'a> * Expression) list) =
         let valueRules = rules |> List.choose (fun (pattern, replacer) -> 
             match pattern with
             | Value expr -> Some (expr, replacer)
@@ -123,11 +125,11 @@ type Builder(allRules: RewriteRule list) =
         valueRules, List.headOption anyRules
 
     // Atoms
-    static member private buildPatternMap (values: (PatternUnion<'a> * Replacer) list) : PatternMap<'a> =
+    static member private buildPatternMap (values: (PatternUnion<'a> * Expression) list) : PatternLeaf<'a> =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "atom" values
-        { value = valueRules |> Map.ofList; any = anyRule }
+        { value = valueRules; any = anyRule }
 
-    static member private partitionAtoms (rules: (AtomPattern * Replacer) list) =
+    static member private partitionAtoms (rules: (AtomPattern * Expression) list) =
         rules
         |> List.fold (fun (boolRules, intRules, floatRules, strRules, varRules, kwRules) (pattern, replacer) -> 
             match pattern with
@@ -139,7 +141,7 @@ type Builder(allRules: RewriteRule list) =
             | PKeyword p -> boolRules, intRules, floatRules, strRules, varRules, (p, replacer)::kwRules
         ) ([], [], [], [], [], [])
         
-    static member private buildAtomInner (rules: (AtomPattern * Replacer) list) : LeafDecisionTree =
+    static member private buildAtomInner (rules: (AtomPattern * Expression) list) : AtomDecisionTree =
         let boolRules, intRules, floatRules, strRules, varRules, kwRules = Builder.partitionAtoms rules
 
         { 
@@ -151,18 +153,16 @@ type Builder(allRules: RewriteRule list) =
             keyword = ifEmptyNoneElseApply Builder.buildPatternMap kwRules
         }
 
-    static member private buildAtom (rules: (PatternUnion<AtomPattern> * Replacer) list) : PatternWrapper<LeafDecisionTree> =
+    static member private buildAtom (rules: (PatternUnion<AtomPattern> * Expression) list) : PatternWrapper<AtomDecisionTree> =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "atom" rules
         { value = Builder.buildAtomInner valueRules; any = anyRule }
 
     // Lists and Nodes
-    static member private buildNodeInner (rules: (Pattern list * Replacer) list) =
+    static member private buildNodeInner (rules: (Pattern list * Expression) list) =
         let rulesEnding, rulesContinuing = 
             rules 
             |> List.filter (fun (pattern, _) -> pattern.Length > 0) 
             |> List.partition (fun (pattern: Pattern list, _) -> pattern.Length = 1)
-
-        if rulesEnding.Length > 1 then failwithf "Got multiple rules that match the same pattern: %A" rulesEnding
 
         let ending: FirstLevelPattern option = 
             rulesEnding
@@ -187,21 +187,21 @@ type Builder(allRules: RewriteRule list) =
 
         { value = nodes; ending = ending }
 
-    static member private buildNode (rules: (PatternUnion<Pattern list> * Replacer) list) =
+    static member private buildNode (rules: (PatternUnion<Pattern list> * Expression) list) =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "node" rules
         { value = Builder.buildNodeInner valueRules; any = anyRule }
 
     // Expression
-    static member private partitionToExpressionTypes (rules: (ExpressionPattern * Replacer) list) =
+    static member private partitionToExpressionTypes (rules: (ExpressionPattern * Expression) list) =
         rules
         |> List.fold (fun (atomRuleSets, nodeRuleSets, listRuleSets) (pattern, replacer) ->
             match pattern with
-            | PAtom leaf -> (leaf, replacer)::atomRuleSets, nodeRuleSets, listRuleSets
+            | PDefined leaf -> (leaf, replacer)::atomRuleSets, nodeRuleSets, listRuleSets
             | PNode children -> atomRuleSets, (children, replacer)::nodeRuleSets, listRuleSets
             | PList children -> atomRuleSets, nodeRuleSets, (children, replacer)::listRuleSets
         ) ([], [], [])
 
-    static member private buildExpression (rules: (ExpressionPattern * Replacer) list) : ExpressionDecisionTree =
+    static member private buildExpression (rules: (ExpressionPattern * Expression) list) : ExpressionDecisionTree =
         let atomRuleSet, nodeRuleSet, listRuleSet = Builder.partitionToExpressionTypes rules
 
         { 
@@ -210,7 +210,7 @@ type Builder(allRules: RewriteRule list) =
             list = ifEmptyNoneElseApply Builder.buildNode listRuleSet
         }
 
-    static member private getFirstLevelPattern (rules: (PatternUnion<ExpressionPattern> * Replacer) list) =
+    static member private getFirstLevelPattern (rules: (PatternUnion<ExpressionPattern> * Expression) list) =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "first level" rules
         { value = ifEmptyNoneElseApply Builder.buildExpression valueRules; any = anyRule }
 
@@ -220,21 +220,20 @@ type Builder(allRules: RewriteRule list) =
 
 type Walker(tree: FirstLevelPattern) = 
     // Atoms
-    static member private tryFindInPatternMap wrapperFn (key: 'a) (patternMap: MaybePatternMap<'a>) =
+    static member private tryFindInPatternMap wrapperFn (key: 'a) (patternMap: MaybePatternLeaf<'a>) =
         let withoutKey replacer = replacer, []
         let withKey replacer = replacer, [key |> wrapperFn |> Atom]
 
-        printfn "key: %A" key
-        printfn "patternMap: %A" patternMap
-
         patternMap 
         |> Option.bind (fun pdt -> 
-            pdt.value.TryFind key
+            pdt.value
+            |> List.tryFind (fun (k, _) -> k = key)
+            |> Option.map snd
             |> Option.map withoutKey
             |> Option.orElse (pdt.any |> Option.map withKey)
         )
-                
-    static member private tryFindAtomReplacer (tree: LeafDecisionTree) = function
+    
+    static member private tryFindAtomReplacer (tree: AtomDecisionTree) = function
         | Bool b -> tree.bool |> Walker.tryFindInPatternMap Bool b
         | Integer i -> tree.integer |> Walker.tryFindInPatternMap Integer i
         | Float f -> tree.float |> Walker.tryFindInPatternMap Float f
@@ -242,11 +241,8 @@ type Walker(tree: FirstLevelPattern) =
         | Variable v -> tree.variable |> Walker.tryFindInPatternMap Variable v
         | Keyword k -> tree.keyword |> Walker.tryFindInPatternMap Keyword k
 
-    static member private tryGetAtomTreeResult (tree: LeafDecisionTree) (atom: Atom) = 
-        atom |> Walker.tryFindAtomReplacer tree
-
-    static member private walkAtom (atom: Atom) (pattern: PatternWrapper<LeafDecisionTree>) = 
-        atom |> Walker.tryGetAtomTreeResult pattern.value |> Option.orElse (Option.tupleWithRev pattern.any [Atom atom])
+    static member private walkAtom (atom: Atom) (pattern: PatternWrapper<AtomDecisionTree>) = 
+        atom |> Walker.tryFindAtomReplacer pattern.value |> Option.orElse (Option.tupleWithRev pattern.any [Atom atom])
 
     // Lists and Nodes
     static member private tryGetNodeTreeResultInner wrapperType (children: Expression list) (flp: FirstLevelPattern) (next: NodeDecisionTree) =
@@ -258,11 +254,9 @@ type Walker(tree: FirstLevelPattern) =
     static member private tryGetNodeTreeResult wrapperType (tree: (FirstLevelPattern * NodeDecisionTree) list) (children: Expression list) = 
         tree |> List.tryPick (fun (flp, next) -> Walker.tryGetNodeTreeResultInner wrapperType children flp next)
 
-    static member private tryWalkEnding wrapperType (maybePattern: FirstLevelPattern option) (ending: Expression) = 
-        maybePattern |> Option.bind (fun pattern -> Walker.walk pattern ending)
-
     static member private walkNodeInner wrapperType (pattern: NodeDecisionTree) (children: Expression list) = 
-        Walker.tryWalkEnding wrapperType pattern.ending children.Head
+        // would be nice but wont always work, e.g. with denesting patterns. it would just select any first item of any node
+        if children.Length = 1 then pattern.ending |> Option.bind (fun pattern -> Walker.walk pattern children.Head) else None
         |> Option.orElse (children |> Walker.tryGetNodeTreeResult wrapperType pattern.value)
 
     static member private walkNode wrapperType (children: Expression list) (pattern: PatternWrapper<NodeDecisionTree>) = 
@@ -278,5 +272,6 @@ type Walker(tree: FirstLevelPattern) =
         tree.value |> Option.bind (fun v -> Walker.walkExpression v expr) |> Option.orElse (Option.tupleWithRev tree.any [expr])
         
     // First level
-    member this.tryReplace expr = Walker.walk tree expr |> Option.map (fun (replacer, args) -> replacer args)
+    member this.tryReplace expr = 
+        Walker.walk tree expr |> Option.map (fun (replacer, args) -> replacer args)
       

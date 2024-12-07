@@ -6,4 +6,4 @@ module Performance =
         sw.Start()
         let result = f()
         sw.Stop()
-        (result, sw.Elapsed.TotalMicroseconds)
+        (result, sw.Elapsed.TotalMilliseconds)

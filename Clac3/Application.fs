@@ -1,26 +1,18 @@
 ﻿module Clac3.Application
 
 open Clac3.Domain
-open Clac3.DecisionTree
-open Clac3.Interpreter
 
-type Application = {
-    rewriteRules: RewriteRule list;
-    freeExpressions: Expression list;
-}
+/// <summary>
+/// Represents an application as a set of computation rules to a set of expressions.
+/// The computation rules are combined into one object that is used to evaluate all the expressions.
+/// Getting the args is separate from evaluting for performance measurement.
+/// </summary>
+[<AbstractClass>]
+type Application<'a, 'b>(computationRules: 'a list, expressions: Expression list) =
+    let computationRules = computationRules
+    let expressions = expressions
 
-module Application =
-    let init rules expressions = {
-        rewriteRules = rules
-        freeExpressions = expressions;
-    }
+    abstract member eval : args: 'b -> Expression list
+    abstract member getEvalArgs : 'b
 
-    let eval (p, tree) = 
-        p.freeExpressions |> List.map (evalExpr tree 0)
-
-    let validate p = p
-
-    let getEvalArgs pRaw = 
-        validate pRaw, Walker ((Builder pRaw.rewriteRules).constructTree)
-
-    let runProgram = getEvalArgs >> eval
+    member this.runProgram = this.getEvalArgs |> this.eval

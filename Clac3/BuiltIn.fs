@@ -14,7 +14,7 @@ open Clac3.Representation
 
 module Helper = 
     let leafAny = [pBo; pInt; pFl; pStr; pLi] // DEPENDENCY: Atom
-    let firstLevelAny = [PAtom Any; PList Any; PNode Any] // DEPENDENCY: Expression, ExpressionPattern
+    let firstLevelAny = [PDefined Any; PList Any; PNode Any] // DEPENDENCY: Expression, ExpressionPattern
 
     let buildArithmeticRuleSetInfixOp op opInt opFloat = [
         {

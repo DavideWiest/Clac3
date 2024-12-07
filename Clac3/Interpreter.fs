@@ -1,8 +1,6 @@
 ﻿module Clac3.Interpreter
 
 open Clac3.Domain
-open Clac3.Representation
-open Clac3.DecisionTree
     
 let private isDefined = function
     | Atom a -> 
@@ -27,21 +25,20 @@ let private isBreadthFirst = function
     | Node (Atom (Keyword "if")::_) -> true
     | _ -> false
 
-let rec evalExpr (tree: Walker) childEvalI (expr: Expression) =
+let rec evalExpr (compuationObj: 'a) (tryReplace: 'a -> Expression -> Expression option) childEvalI (expr: Expression) =
     // if the expression is a leaf but not a variable, it is already evaluated
     if isDefined expr then expr else
 
-    printfn "evaluating %A" (ToString.expression expr)
     let nextChildEvalI = getNextEvalChildIExpr expr childEvalI
 
     // breadth first (ie pattern matching on current expr) search if necessary, 
     // otherwise depth first (ie evaluating children first) if there are any unevaluated children
-    let maybeNewExpr = if isBreadthFirst expr || nextChildEvalI = None then tree.tryReplace expr else None
+    let maybeNewExpr = if isBreadthFirst expr || nextChildEvalI.IsNone then tryReplace compuationObj expr else None
 
     match maybeNewExpr with
     // evaluate the modified node
     // dont use Option.defaultValue, it will evaluate even if the option is Some - didnt know F# was so pythonic
-    | Some newExpr -> evalExpr tree 0 newExpr
+    | Some newExpr -> evalExpr compuationObj tryReplace 0 newExpr
     // no rule was applicable: find and evaluate the first unevaluated child
     // at some point no rule will be applicable, so all children that are supposed to be evaluated will be
     | None ->
@@ -51,7 +48,7 @@ let rec evalExpr (tree: Walker) childEvalI (expr: Expression) =
             // all children have been evaluated
             | None -> expr
             | Some nextEvalChildI ->
-                children[..nextEvalChildI-1] @ [evalExpr tree 0 children[nextEvalChildI]] @ children[nextEvalChildI+1..] 
+                children[..nextEvalChildI-1] @ [evalExpr compuationObj tryReplace 0 children[nextEvalChildI]] @ children[nextEvalChildI+1..] 
                 |> Node
-                |> evalExpr tree (nextEvalChildI+1)
+                |> evalExpr compuationObj tryReplace (nextEvalChildI+1)
         | _ -> expr

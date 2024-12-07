@@ -10,10 +10,12 @@
     <Compile Include="Domain.fs" />
     <Compile Include="Representation.fs" />
     <Compile Include="DomainUtil.fs" />
-    <Compile Include="DecisionTree.fs" />
     <Compile Include="Interpreter.fs" />
     <Compile Include="Application.fs" />
     <Compile Include="BuiltIn.fs" />
+    <Compile Include="MacroInterpreter\DecisionTree.fs" />
+    <Compile Include="MacroInterpreter\Application.fs" />
+    <Compile Include="Interpreter2\MacroGrouper.fs" />
     <Compile Include="Testing.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Program.fs" />

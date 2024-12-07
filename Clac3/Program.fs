@@ -1,16 +1,14 @@
 ﻿open Clac3.Domain
 open Clac3.DomainUtil
-open Clac3.Representation
-open Clac3.DecisionTree
 open Clac3.BuiltIn
-open Clac3.Application
-open Clac3.Testing
+open Clac3.MacroInterpreter.Application
 open Clac3.Data
+open Clac3.Interpreter2.MacroGrouper
 
-let customRules: RewriteRule list = [
+let customRules: Macro list = [
     {
         pattern = pNC [vKw "factorial"; vInt 0]
-        replacer = Args.zero (aInt 1)
+        replacer = aInt 1
     }
     {
         pattern = pNC [vKw "factorial"; pInt]
@@ -25,20 +23,21 @@ let customRules: RewriteRule list = [
                         aKw "-";
                         aInt 1
                     ]
-                ]]
+                ]
+            ]
         )
     }
     {
-        pattern = Value (PAtom (Value (PVariable (Value "x"))))
-        replacer = Args.zero (aInt 5)
+        pattern = Value (PDefined (Value (PVariable (Value "x"))))
+        replacer = aInt 5
     }
     {
         pattern = pNC [vKw "fibonacci"; vInt 0]
-        replacer = Args.zero (aInt 0)
+        replacer = aInt 0
     }
     {
         pattern = pNC [vKw "fibonacci"; vInt 1]
-        replacer = Args.zero (aInt 1)
+        replacer = aInt 1
     }
     {
         pattern = pNC [vKw "fibonacci"; pInt]
@@ -104,17 +103,13 @@ let customRules: RewriteRule list = [
     }
 ]
 
-let dummyProgram = {
-    rewriteRules = List.append coreRuleSet customRules
-    freeExpressions = [
-        //Atom (Variable "x")
-        //Node [aKw "fibonacci"; aInt 25]
-        Node [aKw "fibonacciWithIf"; aInt 25] // test performance of if statements vs pattern matching
-    ]
-}
+let app = ExtendedMacroApplication(customRules,
+    [Node [aKw "fibonacci"; aInt 25]]
+)
 
-ToString.nodeDecisionTree 0 ((Builder testProgram.rewriteRules).constructTree.value.Value.node.Value.value) |> printfn "%s"
+//let args = app.getEvalArgs
+//let time = Performance.measureTime (fun () -> app.eval args)
+//printfn "Results: \n%s" (time |> fst |> List.map ToString.expression |> String.concat "\n")
+//printfn "Time: %ims" (time |> snd |> int)
 
-let args = Application.getEvalArgs testProgram
-let time = Performance.measureTime (fun () -> Application.eval args)
-printfn "Results: \n%s" (time |> fst |> List.map ToString.expression |> String.concat "\n")
+groupByPattern coreRuleSet

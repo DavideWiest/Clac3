@@ -1,6 +1,6 @@
 ﻿module Clac3.Representation
 
-open Clac3.Domain
+open Clac3.Expression
 
 module rec ToString =
     let atom = function

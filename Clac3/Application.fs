@@ -1,6 +1,6 @@
 ﻿module Clac3.Application
 
-open Clac3.Domain
+open Clac3.Expression
 
 /// <summary>
 /// Represents an application as a set of computation rules to a set of expressions.

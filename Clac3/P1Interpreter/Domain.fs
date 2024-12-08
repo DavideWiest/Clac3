@@ -1,4 +1,6 @@
-﻿module Clac3.Domain
+﻿module Clac3.P1Interpreter.Domain
+
+open Clac3.Expression
 
 // Patterns
 type PatternUnion<'a> = 
@@ -20,20 +22,6 @@ type ExpressionPattern =
     | PNode of PatternUnion<Pattern list>
 
 and Pattern = PatternUnion<ExpressionPattern>
-
-// Expressions
-type Atom = 
-    | Bool of bool
-    | Integer of int
-    | Float of float
-    | String of string
-    | Variable of string
-    | Keyword of string
-
-and Expression =
-    | Atom of Atom
-    | List of Expression list
-    | Node of Expression list
 
 // Computation rules
 type Replacer = Expression list -> Expression

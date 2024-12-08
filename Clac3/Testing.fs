@@ -1,8 +1,9 @@
 ﻿module Clac3.Testing
 
-open Clac3.Domain
-open Clac3.DomainUtil
-open Clac3.BuiltIn
+open Clac3.Expression
+open Clac3.P1Interpreter.Domain
+open Clac3.P1Interpreter.DomainUtil
+open Clac3.P1Interpreter.BuiltIn
 
 let testRulesRaw = [
     {

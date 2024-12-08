@@ -1,7 +1,8 @@
 ﻿module Clac3.P1Interpreter.DecisionTree
 
 open Clac3.Util
-open Clac3.Domain
+open Clac3.Expression
+open Clac3.P1Interpreter.Domain
 
 type PatternWrapper<'a> = {
     value: 'a

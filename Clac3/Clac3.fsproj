@@ -7,12 +7,13 @@
 
   <ItemGroup>
     <Compile Include="Util.fs" />
-    <Compile Include="Domain.fs" />
+    <Compile Include="Expression.fs" />
     <Compile Include="Representation.fs" />
-    <Compile Include="DomainUtil.fs" />
     <Compile Include="SubstitutionInterpreter.fs" />
     <Compile Include="Application.fs" />
-    <Compile Include="BuiltIn.fs" />
+    <Compile Include="P1Interpreter\Domain.fs" />
+    <Compile Include="P1Interpreter\DomainUtil.fs" />
+    <Compile Include="P1Interpreter\BuiltIn.fs" />
     <Compile Include="P1Interpreter\DecisionTree.fs" />
     <Compile Include="P1Interpreter\Application.fs" />
     <Compile Include="Testing.fs" />

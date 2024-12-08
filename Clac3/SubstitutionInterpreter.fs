@@ -1,6 +1,6 @@
 ﻿module Clac3.SubstitutionInterpreter
 
-open Clac3.Domain
+open Clac3.Expression
 
 let rec handleListLikeType wrapperFn tryReplace children =
     children |> List.map (evalExpr tryReplace) |> wrapperFn |> tryReplace |> Option.map (evalExpr tryReplace) |> Option.defaultValue (wrapperFn children)

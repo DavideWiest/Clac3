@@ -3,6 +3,7 @@
 open Clac3.Expression
 
 // Patterns
+
 type PatternUnion<'a> = 
     | Value of 'a
     | Any
@@ -23,8 +24,28 @@ type ExpressionPattern =
 
 and Pattern = PatternUnion<ExpressionPattern>
 
-// Computation rules
+// TypeAnnotatedExpression
+
+type Type =
+    | TBool
+    | TInteger
+    | TFloat
+    | TString
+    | TVariable
+    | TKeyword
+    | TList of Type
+
+type TypeAnnotatedExpression =
+    | TAAtom of Atom
+    // list is a recursive type, but won't evaluate to some other type 
+    // the annotation is only for node, as its the only option that can evaluate to a different type
+    | TAList of TypeAnnotatedExpression list
+    | TANode of TypeAnnotatedExpression list * Type
+
+// Rewrite rules
+
 type Replacer = Expression list -> Expression
+
 type RewriteRule = {
     pattern: Pattern
     replacer: Replacer

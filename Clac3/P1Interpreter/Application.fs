@@ -7,7 +7,7 @@ open Clac3.P1Interpreter.Domain
 open Clac3.P1Interpreter.BuiltIn
 open Clac3.P1Interpreter.DecisionTree
 
-type MacroApplication(rules: RewriteRule list, expressions: Expression list) =
+type RewriteRuleApplication(rules: RewriteRule list, expressions: Expression list) =
     inherit Application<RewriteRule, Walker>(rules, expressions)
 
     override this.eval tree = 
@@ -16,5 +16,5 @@ type MacroApplication(rules: RewriteRule list, expressions: Expression list) =
 
     override this.getEvalArgs = Walker ((Builder rules).constructTree)
 
-type ExtendedMacroApplication(extraMacros: RewriteRule list, exprs: Expression list) =
-    inherit MacroApplication(List.append coreRuleSet extraMacros, exprs)
+type ExtendedRewriteRuleApplication(extraMacros: RewriteRule list, exprs: Expression list) =
+    inherit RewriteRuleApplication(List.append coreRuleSet extraMacros, exprs)

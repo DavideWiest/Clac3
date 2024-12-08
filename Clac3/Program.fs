@@ -102,7 +102,7 @@ let customRules: RewriteRule list = [
     }
 ]
 
-let app = ExtendedMacroApplication(customRules,
+let app = ExtendedRewriteRuleApplication(customRules,
     [Node [aKw "fibonacci"; aInt 25]]
 )
 

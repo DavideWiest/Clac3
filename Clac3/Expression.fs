@@ -12,5 +12,5 @@ type Atom =
 
 and Expression =
     | Atom of Atom
-    | List of Expression list
+    | List of Expression list // list items *should* have the same type
     | Node of Expression list

@@ -146,5 +146,7 @@ let functionalCompositionRules = [
 ]
 
 let coreRuleSet =
-    denestingRules @ controlFlowRules @ logicRules @ booleanRules @ reflectionRules @ arithmeticRules @ listRules @ stringRules @ functionalCompositionRules
+    denestingRules @ logicRules @ booleanRules @ reflectionRules @ arithmeticRules @ listRules @ stringRules @ functionalCompositionRules
+    // branching rules won't work because the substituioninterpreter is depth-first now
+    // @ controlFlowRules 
     

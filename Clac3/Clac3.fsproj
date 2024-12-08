@@ -10,7 +10,7 @@
     <Compile Include="Domain.fs" />
     <Compile Include="Representation.fs" />
     <Compile Include="DomainUtil.fs" />
-    <Compile Include="Interpreter.fs" />
+    <Compile Include="SubstitutionInterpreter.fs" />
     <Compile Include="Application.fs" />
     <Compile Include="BuiltIn.fs" />
     <Compile Include="P1Interpreter\DecisionTree.fs" />

@@ -26,7 +26,7 @@ let testRulesRaw = [
         )
     }
     {
-        pattern = Value (PDefined (Value (PVariable (Value "x"))))
+        pattern = Value (PAtom (Value (PVariable (Value "x"))))
         replacer = Args.zero (aInt 5)
     }
     {

@@ -1,0 +1,57 @@
+module Restructure =
+    let rec pattern = function
+        | PNodeContaining children -> List.map pattern children |> List.sortBy getPatternDefinitionOrder |> PNodeContaining
+        | p -> p
+
+    let rec expression = function
+        | Node children -> List.map expression children |> List.sortBy getDefinitionOrder |> Node
+        | expr -> expr
+
+    let rule rule = 
+        { pattern = pattern rule.pattern; replacer = expression rule.replacer }
+
+    let program (program: Program) =
+        { rewriteRules = List.map rule program.rewriteRules; freeExpressions = List.map expression program.freeExpressions }
+
+---
+
+let rec toExpression (x: obj) = 
+    match x with
+    | :? Expression as e -> e
+    | :? bool as b -> Bool b
+    | :? int as i -> Integer i
+    | :? float as f -> Float f
+    // strings are always keywords
+    | :? string as s -> Keyword s
+    | :? list<obj> as l -> List (l |> List.map toExpression)
+    | _ -> failwithf "Expected expression-compatible type, got %A" x
+
+let rec private toPattern (x: obj) =
+    match x with
+    | :? Pattern as p -> p
+    | :? LeafPattern as l -> PLeaf l
+    | :? bool as b -> PLeaf (PBoolValue b)
+    | :? int as i -> PLeaf (PIntegerValue i)
+    | :? float as f -> PLeaf (PFloatValue f)
+    | :? string as s -> PLeaf (PKeywordValue s)
+    | :? list<obj> as l -> PListValue (l |> List.map toPattern)
+    | _ -> failwithf "Expected pattern-compatible object, got %A" x
+
+...
+
+let private pNodeInner wrapperFn elements =
+    elements
+    |> Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields
+    |> Array.map toPattern
+    |> List.ofArray
+    |> wrapperFn
+
+let pNode elements = pNodeInner PNodeContaining elements
+//let pNodeStartingWith elements = pNodeInner PNodeStartingWith elements
+
+let node elements = 
+    elements
+    |> Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields
+    |> Array.map toExpression
+    |> List.ofArray
+    |> Node

@@ -1,18 +1,18 @@
-﻿module Clac3.DecisionTree
+﻿module Clac3.P1Interpreter.DecisionTree
 
 open Clac3.Util
 open Clac3.Domain
 
 type PatternWrapper<'a> = {
     value: 'a
-    any: Expression option
+    any: Replacer option
 }
 
 type MaybePatternWrapper<'a> = PatternWrapper<'a> option
 
 // it's a list because there a very few base cases, too few that a hashmap would make sense
 // there is no significant performance difference (for now)
-type PatternLeaf<'a> when 'a: comparison = PatternWrapper<('a * Expression) list>
+type PatternLeaf<'a> when 'a: comparison = PatternWrapper<('a * Replacer) list>
 type MaybePatternLeaf<'a> when 'a: comparison = PatternLeaf<'a> option
 
 type AtomDecisionTree = {
@@ -39,7 +39,7 @@ and ExpressionDecisionTree = {
 
 and FirstLevelPattern = PatternWrapper<ExpressionDecisionTree option>
 
-type TreeResult = (Expression * Expression list) option
+type TreeResult = (Replacer * Expression list) option
 
 module ToString = 
     let getPadding indent = String.replicate indent ".   "
@@ -50,7 +50,7 @@ module ToString =
         |> String.concat "\n"
 
     let replacer indent replacer = sprintf "%s%A" (getPadding indent) replacer
-    let maybeReplacer indent (replacerVal: Expression option) = replacerVal |> Option.map (replacer indent) 
+    let maybeReplacer indent (replacerVal: Replacer option) = replacerVal |> Option.map (replacer indent) 
 
     let applyToPatternWrapper indent f (patternWrapper: PatternWrapper<'a>) = 
         formatStructNone indent [
@@ -106,8 +106,8 @@ module ToString =
 
 let ifEmptyNoneElseApply f (l: 'a list) = if l.Length = 0 then None else f l |> Some
 
-type Builder(allRules: Macro list) =
-    static member private separateAnyFromValueBased ruleGroupStr (rules: (PatternUnion<'a> * Expression) list) =
+type Builder(allRules: RewriteRule list) =
+    static member private separateAnyFromValueBased ruleGroupStr (rules: (PatternUnion<'a> * Replacer) list) =
         let valueRules = rules |> List.choose (fun (pattern, replacer) -> 
             match pattern with
             | Value expr -> Some (expr, replacer)
@@ -125,11 +125,11 @@ type Builder(allRules: Macro list) =
         valueRules, List.headOption anyRules
 
     // Atoms
-    static member private buildPatternMap (values: (PatternUnion<'a> * Expression) list) : PatternLeaf<'a> =
+    static member private buildPatternMap (values: (PatternUnion<'a> * Replacer) list) : PatternLeaf<'a> =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "atom" values
         { value = valueRules; any = anyRule }
 
-    static member private partitionAtoms (rules: (AtomPattern * Expression) list) =
+    static member private partitionAtoms (rules: (AtomPattern * Replacer) list) =
         rules
         |> List.fold (fun (boolRules, intRules, floatRules, strRules, varRules, kwRules) (pattern, replacer) -> 
             match pattern with
@@ -141,7 +141,7 @@ type Builder(allRules: Macro list) =
             | PKeyword p -> boolRules, intRules, floatRules, strRules, varRules, (p, replacer)::kwRules
         ) ([], [], [], [], [], [])
         
-    static member private buildAtomInner (rules: (AtomPattern * Expression) list) : AtomDecisionTree =
+    static member private buildAtomInner (rules: (AtomPattern * Replacer) list) : AtomDecisionTree =
         let boolRules, intRules, floatRules, strRules, varRules, kwRules = Builder.partitionAtoms rules
 
         { 
@@ -153,12 +153,12 @@ type Builder(allRules: Macro list) =
             keyword = ifEmptyNoneElseApply Builder.buildPatternMap kwRules
         }
 
-    static member private buildAtom (rules: (PatternUnion<AtomPattern> * Expression) list) : PatternWrapper<AtomDecisionTree> =
+    static member private buildAtom (rules: (PatternUnion<AtomPattern> * Replacer) list) : PatternWrapper<AtomDecisionTree> =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "atom" rules
         { value = Builder.buildAtomInner valueRules; any = anyRule }
 
     // Lists and Nodes
-    static member private buildNodeInner (rules: (Pattern list * Expression) list) =
+    static member private buildNodeInner (rules: (Pattern list * Replacer) list) =
         let rulesEnding, rulesContinuing = 
             rules 
             |> List.filter (fun (pattern, _) -> pattern.Length > 0) 
@@ -187,21 +187,21 @@ type Builder(allRules: Macro list) =
 
         { value = nodes; ending = ending }
 
-    static member private buildNode (rules: (PatternUnion<Pattern list> * Expression) list) =
+    static member private buildNode (rules: (PatternUnion<Pattern list> * Replacer) list) =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "node" rules
         { value = Builder.buildNodeInner valueRules; any = anyRule }
 
     // Expression
-    static member private partitionToExpressionTypes (rules: (ExpressionPattern * Expression) list) =
+    static member private partitionToExpressionTypes (rules: (ExpressionPattern * Replacer) list) =
         rules
         |> List.fold (fun (atomRuleSets, nodeRuleSets, listRuleSets) (pattern, replacer) ->
             match pattern with
-            | PDefined leaf -> (leaf, replacer)::atomRuleSets, nodeRuleSets, listRuleSets
+            | PAtom leaf -> (leaf, replacer)::atomRuleSets, nodeRuleSets, listRuleSets
             | PNode children -> atomRuleSets, (children, replacer)::nodeRuleSets, listRuleSets
             | PList children -> atomRuleSets, nodeRuleSets, (children, replacer)::listRuleSets
         ) ([], [], [])
 
-    static member private buildExpression (rules: (ExpressionPattern * Expression) list) : ExpressionDecisionTree =
+    static member private buildExpression (rules: (ExpressionPattern * Replacer) list) : ExpressionDecisionTree =
         let atomRuleSet, nodeRuleSet, listRuleSet = Builder.partitionToExpressionTypes rules
 
         { 
@@ -210,7 +210,7 @@ type Builder(allRules: Macro list) =
             list = ifEmptyNoneElseApply Builder.buildNode listRuleSet
         }
 
-    static member private getFirstLevelPattern (rules: (PatternUnion<ExpressionPattern> * Expression) list) =
+    static member private getFirstLevelPattern (rules: (PatternUnion<ExpressionPattern> * Replacer) list) =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "first level" rules
         { value = ifEmptyNoneElseApply Builder.buildExpression valueRules; any = anyRule }
 

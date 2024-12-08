@@ -1,14 +1,13 @@
 ﻿open Clac3.Domain
 open Clac3.DomainUtil
-open Clac3.BuiltIn
-open Clac3.MacroInterpreter.Application
+open Clac3.Representation
+open Clac3.P1Interpreter.Application
 open Clac3.Data
-open Clac3.Interpreter2.MacroGrouper
 
-let customRules: Macro list = [
+let customRules: RewriteRule list = [
     {
         pattern = pNC [vKw "factorial"; vInt 0]
-        replacer = aInt 1
+        replacer = Args.zero (aInt 1)
     }
     {
         pattern = pNC [vKw "factorial"; pInt]
@@ -23,21 +22,20 @@ let customRules: Macro list = [
                         aKw "-";
                         aInt 1
                     ]
-                ]
-            ]
+                ]]
         )
     }
     {
-        pattern = Value (PDefined (Value (PVariable (Value "x"))))
-        replacer = aInt 5
+        pattern = Value (PAtom (Value (PVariable (Value "x"))))
+        replacer = Args.zero (aInt 5)
     }
     {
         pattern = pNC [vKw "fibonacci"; vInt 0]
-        replacer = aInt 0
+        replacer = Args.zero (aInt 0)
     }
     {
         pattern = pNC [vKw "fibonacci"; vInt 1]
-        replacer = aInt 1
+        replacer = Args.zero (aInt 1)
     }
     {
         pattern = pNC [vKw "fibonacci"; pInt]
@@ -107,9 +105,7 @@ let app = ExtendedMacroApplication(customRules,
     [Node [aKw "fibonacci"; aInt 25]]
 )
 
-//let args = app.getEvalArgs
-//let time = Performance.measureTime (fun () -> app.eval args)
-//printfn "Results: \n%s" (time |> fst |> List.map ToString.expression |> String.concat "\n")
-//printfn "Time: %ims" (time |> snd |> int)
-
-groupByPattern coreRuleSet
+let args = app.getEvalArgs
+let time = Performance.measureTime (fun () -> app.eval args)
+printfn "Results: \n%s" (time |> fst |> List.map ToString.expression |> String.concat "\n")
+printfn "Time: %ims" (time |> snd |> int)

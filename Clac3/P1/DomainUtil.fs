@@ -1,8 +1,29 @@
-﻿module Clac3.P1Interpreter.DomainUtil
+﻿module Clac3.P1.DomainUtil
 
-open Clac3.Expression
-open Clac3.P1Interpreter.Domain
-open Clac3.Representation
+open Clac3.DomainUtil
+open Clac3.P1.Expression
+open Clac3.P1.Domain
+
+module rec ToString =
+    let atom = function
+        | Integer i -> string i
+        | Float f -> string f
+        | Bool b -> string b
+        | String s -> "\"" + s + "\""
+        | Variable r -> "$" + r
+        | Keyword k -> k
+
+    let expressionInner = function
+        | Atom a -> atom a
+        | List l -> l |> List.map expression |> String.concat ", " |> ToString.inSquareParans
+        | Node children -> children |> node |> ToString.inParans
+
+    let expression = function
+        | List l-> l |> List.map expression |> String.concat ", " |> ToString.inSquareParans
+        | Node children -> node children
+        | expr -> expressionInner expr
+
+    let node = List.map expressionInner >> String.concat " "
 
 let vAtom = Value >> PAtom
 
@@ -48,31 +69,32 @@ module Args =
     let eight matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7]
     let nine matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8]
     let ten matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] args[9]
+
     let printAndPass (args: Expression list) = 
         printfn "args: %A" (args |> List.map ToString.expression)
         args
-    let private typeError typeString item = failwithf "Expected %s, got %A" typeString item
+
     let getNode = function
         | Node children -> children
-        | item -> typeError "node" item
+        | item -> Error.typeError "node" item
     let getList = function
         | List l -> l
-        | item -> typeError "list" item
+        | item -> Error.typeError "list" item
     let getBool = function
         | Atom (Bool b) -> b
-        | item -> typeError "bool" item
+        | item -> Error.typeError "bool" item
     let getInt = function
         | Atom (Integer i) -> i
-        | item -> typeError "int" item
+        | item -> Error.typeError "int" item
     let getFloat = function
         | Atom (Float f) -> f
-        | item -> typeError "float" item
+        | item -> Error.typeError "float" item
     let getString = function
         | Atom (String s) -> s
-        | item -> typeError "string" item
+        | item -> Error.typeError "string" item
     let getVariable = function
         | Atom (Variable v) -> v
-        | item -> typeError "variable" item
+        | item -> Error.typeError "variable" item
     let getKeyword = function
         | Atom (Keyword kw) -> kw
-        | item -> typeError "keyword" item
+        | item -> Error.typeError "keyword" item

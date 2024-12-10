@@ -1,6 +1,6 @@
-﻿module Clac3.P1Interpreter.Domain
+﻿module Clac3.P1.Domain
 
-open Clac3.Expression
+open Clac3.P1.Expression
 
 // Patterns
 
@@ -23,24 +23,6 @@ type ExpressionPattern =
     | PNode of PatternUnion<Pattern list>
 
 and Pattern = PatternUnion<ExpressionPattern>
-
-// TypeAnnotatedExpression
-
-type Type =
-    | TBool
-    | TInteger
-    | TFloat
-    | TString
-    | TVariable
-    | TKeyword
-    | TList of Type
-
-type TypeAnnotatedExpression =
-    | TAAtom of Atom
-    // list is a recursive type, but won't evaluate to some other type 
-    // the annotation is only for node, as its the only option that can evaluate to a different type
-    | TAList of TypeAnnotatedExpression list
-    | TANode of TypeAnnotatedExpression list * Type
 
 // Rewrite rules
 

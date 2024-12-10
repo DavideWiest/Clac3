@@ -85,7 +85,7 @@ Access:
 Class:
     Car:obj
         coords:Coords
-        drive:nil
+        drive:Car
             distance(d):int
         ->
             this with coords = (this.coords with x=x+d) // nice to have: variable scope for with-updates
@@ -101,6 +101,16 @@ Branch statements:
     _ ? _ : _
 Loops: methods of arrays, sequences, lists (especially sequences) (really no while loop?)
 Nice to have: match statements + variable extraction from objects (e.g. Some(value) where value is a variable)
+```
+
+##### Macros
+```
+Definition:
+    ifthenelse:macro
+        if [cond] then [ifBranch] else [elseBranch]
+    ->
+        ifthenelse cond ifBranch else elseBranch
+Nameless rewrite rules should be possible to
 ```
 
 ##### Utilities
@@ -126,7 +136,7 @@ Modules within files: supported
 
 ##### Capabilities
 - simple DSLs using Macros
-- as fast as python, roughly
+- should be as fast as python, roughly
 
 ### Observations
 - highly functional implementation

@@ -1,31 +1,14 @@
-﻿open Clac3.Expression
-open Clac3.Representation
-open Clac3.P1Interpreter.Domain
-open Clac3.P1Interpreter.DomainUtil
-open Clac3.P1Interpreter.Application
+﻿open Clac3.P1.Expression
+open Clac3.P1.Domain
+open Clac3.P1.DomainUtil
+open Clac3.P1.Application
+open Clac3.P2.FExpression
+open Clac3.P2.Application
+open Clac3.P2.Function
+open Clac3.P2.DomainUtil
 open Clac3.Data
 
 let customRules: RewriteRule list = [
-    {
-        pattern = pNC [vKw "factorial"; vInt 0]
-        replacer = Args.zero (aInt 1)
-    }
-    {
-        pattern = pNC [vKw "factorial"; pInt]
-        replacer = Args.one (fun n ->
-            Node [
-                n;
-                aKw "*";
-                Node [
-                    aKw "factorial";
-                    Node [
-                        n;
-                        aKw "-";
-                        aInt 1
-                    ]
-                ]]
-        )
-    }
     {
         pattern = Value (PAtom (Value (PVariable (Value "x"))))
         replacer = Args.zero (aInt 5)
@@ -62,51 +45,49 @@ let customRules: RewriteRule list = [
             ]
         )
     }
-    {
-        pattern = pNC [vKw "fibonacciWithIf"; pInt]
-        replacer = Args.one (fun n ->
-            Node [
-                aKw "if";
-                Node [n; aKw "="; aInt 0]
-                aKw "then";
-                aInt 0;
-                aKw "else";
-                Node [
-                    aKw "if";
-                    Node [n; aKw "="; aInt 1]
-                    aKw "then";
-                    aInt 1;
-                    aKw "else";
-                    Node [
-                        Node [
-                            aKw "fibonacciWithIf";
-                            Node [
-                                n;
-                                aKw "-";
-                                aInt 1
-                            ]
-                        ];
-                        aKw "+";
-                        Node [
-                            aKw "fibonacciWithIf";
-                            Node [
-                                n;
-                                aKw "-";
-                                aInt 2
-                            ]
-                        ]
-                    ]
-                ]
-            ]
-        )
-    }
 ]
 
-let app = ExtendedRewriteRuleApplication(customRules,
+let factorialFn = {
+    ident = "fibonacci";
+    lambda = Custom (
+        [|"x"|],
+        FBranch (
+            FCall ("intEquals", [|FCall("x", [||]); FAtom(FInteger 0)|]),
+            FAtom (FInteger 0),
+            FBranch (
+                FCall ("intEquals", [|FCall("x", [||]); FAtom(FInteger 1)|]),
+                FAtom (FInteger 1),
+                FCall ("addInts", [|
+                    FCall ("fibonacci", [|
+                        FCall ("subInts", [|FCall("x", [||]); FAtom(FInteger 1)|])
+                    |])
+                    FCall ("fibonacci", [|
+                        FCall ("subInts", [|FCall("x", [||]); FAtom(FInteger 2)|])
+                    |])
+                |])
+            )
+        )
+    )
+}
+
+let appRules = ExtendedRewriteRuleApplication(customRules,
     [Node [aKw "fibonacci"; aInt 25]]
 )
 
-let args = app.getEvalArgs
-let time = Performance.measureTime (fun () -> app.eval args)
-printfn "Results: \n%s" (time |> fst |> List.map ToString.expression |> String.concat "\n")
-printfn "Time: %ims" (time |> snd |> int)
+let appFunc = ExtendedFunctionalApplication([|factorialFn|],
+    [|FCall ("fibonacci", [|faInt 25|])|]
+)
+
+let tryFibRewriteRules () = 
+    let args = appRules.getEvalArgs
+    let result = Performance.measureTime (fun () -> appRules.eval args)
+    printfn "Results: \n%s" (result |> fst |> Seq.map ToString.expression |> String.concat "\n")
+    printfn "Time: %ims" (result |> snd |> int)
+
+let tryFibFunctional () =
+    let args = appFunc.getEvalArgs
+    let result = Performance.measureTime (fun () -> appFunc.eval args)
+    printfn "Results: \n%s" (result |> fst |> Seq.map P2ToString.atom |> String.concat "\n")
+    printfn "Time: %ims" (result |> snd |> int)
+
+tryFibFunctional ()

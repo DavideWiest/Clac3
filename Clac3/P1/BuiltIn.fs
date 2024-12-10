@@ -1,9 +1,9 @@
-﻿module Clac3.P1Interpreter.BuiltIn
+﻿module Clac3.P1.BuiltIn
 
-open Clac3.Expression
-open Clac3.P1Interpreter.DomainUtil
-open Clac3.P1Interpreter.Domain
-open Clac3.Representation
+open Clac3.DomainUtil
+open Clac3.P1.Expression
+open Clac3.P1.DomainUtil
+open Clac3.P1.Domain
 
 // NOTE: rules should be defined so that all the defined values come first - like in the if-then-else rule
 //  the expressions are evaluated depth first from left to right

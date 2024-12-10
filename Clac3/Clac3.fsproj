@@ -7,16 +7,24 @@
 
   <ItemGroup>
     <Compile Include="Util.fs" />
-    <Compile Include="Expression.fs" />
-    <Compile Include="Representation.fs" />
-    <Compile Include="SubstitutionInterpreter.fs" />
+    <Compile Include="DomainUtil.fs" />
     <Compile Include="Application.fs" />
-    <Compile Include="P1Interpreter\Domain.fs" />
-    <Compile Include="P1Interpreter\DomainUtil.fs" />
-    <Compile Include="P1Interpreter\BuiltIn.fs" />
-    <Compile Include="P1Interpreter\DecisionTree.fs" />
-    <Compile Include="P1Interpreter\Application.fs" />
-    <Compile Include="Testing.fs" />
+    <Compile Include="P1\Expression.fs" />
+    <Compile Include="P1\RewriteRule.fs" />
+    <Compile Include="P1\DomainUtil.fs" />
+    <Compile Include="P1\Interpreter.fs" />
+    <Compile Include="P1\TypeAnnotatedExpression.fs" />
+    <Compile Include="P1\BuiltIn.fs" />
+    <Compile Include="P1\DecisionTree.fs" />
+    <Compile Include="P1\Application.fs" />
+    <Compile Include="P2\FExpression.fs" />
+    <Compile Include="P2\Function.fs" />
+    <Compile Include="P2\DomainUtil.fs" />
+    <Compile Include="P2\Interpreter.fs" />
+    <Compile Include="P2\Normalizer.fs" />
+    <Compile Include="P2\BuiltIn.fs" />
+    <Compile Include="P2\Application.fs" />
+    <Compile Include="P2\Testing.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

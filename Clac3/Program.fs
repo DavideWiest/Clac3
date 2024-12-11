@@ -1,4 +1,6 @@
-﻿open Clac3.P1.Expression
+﻿
+open Clac3.Application
+open Clac3.P1.Expression
 open Clac3.P1.Domain
 open Clac3.P1.DomainUtil
 open Clac3.P1.Application
@@ -53,16 +55,39 @@ let factorialFn = {
         [|"x"|],
         FBranch (
             FCall ("intEquals", [|FCall("x", [||]); FAtom(FInteger 0)|]),
-            FAtom (FInteger 0),
+            FAtom (FFloat 0.0),
             FBranch (
                 FCall ("intEquals", [|FCall("x", [||]); FAtom(FInteger 1)|]),
-                FAtom (FInteger 1),
-                FCall ("addInts", [|
+                FAtom (FFloat 1.0),
+                FCall ("addFloats", [|
                     FCall ("fibonacci", [|
                         FCall ("subInts", [|FCall("x", [||]); FAtom(FInteger 1)|])
                     |])
                     FCall ("fibonacci", [|
                         FCall ("subInts", [|FCall("x", [||]); FAtom(FInteger 2)|])
+                    |])
+                |])
+            )
+        )
+    )
+}
+
+let factorialFnFloat = {
+    ident = "fibonacciFloat";
+    lambda = Custom (
+        [|"x"|],
+        FBranch (
+            FCall ("floatEquals", [|FCall("x", [||]); FAtom(FFloat 0.0)|]),
+            FAtom (FFloat 0.0),
+            FBranch (
+                FCall ("floatEquals", [|FCall("x", [||]); FAtom(FFloat 1.0)|]),
+                FAtom (FFloat 1.0),
+                FCall ("addFloats", [|
+                    FCall ("fibonacciFloat", [|
+                        FCall ("subFloats", [|FCall("x", [||]); FAtom(FFloat 1.0)|])
+                    |])
+                    FCall ("fibonacciFloat", [|
+                        FCall ("subFloats", [|FCall("x", [||]); FAtom(FFloat 2.0)|])
                     |])
                 |])
             )
@@ -78,16 +103,22 @@ let appFunc = ExtendedFunctionalApplication([|factorialFn|],
     [|FCall ("fibonacci", [|faInt 25|])|]
 )
 
-let tryFibRewriteRules () = 
-    let args = appRules.getEvalArgs
-    let result = Performance.measureTime (fun () -> appRules.eval args)
-    printfn "Results: \n%s" (result |> fst |> Seq.map ToString.expression |> String.concat "\n")
+let appFunc2 = ExtendedFunctionalApplication([|factorialFnFloat|],
+    [|FCall ("fibonacciFloat", [|faFl 25|])|]
+)
+
+let measureApp (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) = 
+    let args = app.getEvalArgs
+    let result = Performance.measureTime (fun () -> app.eval args)
+    printfn "Results: \n%s" (result |> fst |> Seq.map toStr |> String.concat "\n")
     printfn "Time: %ims" (result |> snd |> int)
 
-let tryFibFunctional () =
-    let args = appFunc.getEvalArgs
-    let result = Performance.measureTime (fun () -> appFunc.eval args)
-    printfn "Results: \n%s" (result |> fst |> Seq.map P2ToString.atom |> String.concat "\n")
+let measureAppMultipleTime n (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) = 
+    let args = app.getEvalArgs
+    let result = Performance.measureAverageTime n (fun () -> app.eval args)
+    printfn "Results: \n%s" (result |> fst |> Seq.map toStr |> String.concat "\n")
     printfn "Time: %ims" (result |> snd |> int)
 
-tryFibFunctional ()
+// measureApp appRules ToString.expression
+measureAppMultipleTime 200 appFunc P2ToString.atom
+measureAppMultipleTime 200 appFunc2 P2ToString.atom

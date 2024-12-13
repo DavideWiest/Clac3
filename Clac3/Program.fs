@@ -8,23 +8,24 @@ open Clac3.P2.FExpression
 open Clac3.P2.Application
 open Clac3.P2.Function
 open Clac3.P2.DomainUtil
+open Clac3.Testing.Testing
 open Clac3.Data
 
 let customRules: RewriteRule list = [
+    //{
+    //    pattern = Value (PAtom (Value (PVariable (Value "x"))))
+    //    replacer = Args.zero (aInt 5)
+    //}
     {
-        pattern = Value (PAtom (Value (PVariable (Value "x"))))
-        replacer = Args.zero (aInt 5)
-    }
-    {
-        pattern = pNC [vKw "fibonacci"; vInt 0]
+        pattern = vNC [vKw "fibonacci"; vInt 0]
         replacer = Args.zero (aInt 0)
     }
     {
-        pattern = pNC [vKw "fibonacci"; vInt 1]
+        pattern = vNC [vKw "fibonacci"; vInt 1]
         replacer = Args.zero (aInt 1)
     }
     {
-        pattern = pNC [vKw "fibonacci"; pInt]
+        pattern = vNC [vKw "fibonacci"; pInt]
         replacer = Args.one (fun n ->
             Node [
                 Node [
@@ -113,12 +114,15 @@ let measureApp (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) =
     printfn "Results: \n%s" (result |> fst |> Seq.map toStr |> String.concat "\n")
     printfn "Time: %ims" (result |> snd |> int)
 
-let measureAppMultipleTime n (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) = 
+let measureAppRepeatedly n (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) = 
     let args = app.getEvalArgs
     let result = Performance.measureAverageTime n (fun () -> app.eval args)
     printfn "Results: \n%s" (result |> fst |> Seq.map toStr |> String.concat "\n")
-    printfn "Time: %ims" (result |> snd |> int)
+    printfn "Time: %ims" (result |> snd |> int |> fun t -> t / n)
 
-// measureApp appRules ToString.expression
-measureAppMultipleTime 200 appFunc P2ToString.atom
-measureAppMultipleTime 200 appFunc2 P2ToString.atom
+//measureAppRepeatedly 20 appRules ToString.expression
+//measureAppRepeatedly 20 appFunc P2ToString.atom
+//measureAppRepeatedly 20 appFunc2 P2ToString.atom
+
+let ruleTestApp = RewriteRuleApplication(testRules, testExprs)
+ruleTestApp.runProgram |> Seq.iter (fun (result) -> printfn "%s" (ToString.expression result))

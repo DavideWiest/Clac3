@@ -24,7 +24,7 @@
     <Compile Include="P2\Normalizer.fs" />
     <Compile Include="P2\BuiltIn.fs" />
     <Compile Include="P2\Application.fs" />
-    <Compile Include="P2\Testing.fs" />
+    <Compile Include="Testing\Testing.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

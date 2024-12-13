@@ -25,6 +25,7 @@ module rec ToString =
 
     let node = List.map expressionInner >> String.concat " "
 
+// value patterns
 let vAtom = Value >> PAtom
 
 let vBo = Value >> PBool >> vAtom >> Value
@@ -34,6 +35,7 @@ let vStr = Value >> PString >> vAtom >> Value
 let vVar = Value >> PVariable >> vAtom >> Value
 let vKw = Value >> PKeyword >> vAtom >> Value
 
+// any patterns
 let pBo = Any |> PBool |> vAtom |> Value
 let pInt = Any |> PInteger |> vAtom |> Value
 let pFl = Any |> PFloat |> vAtom |> Value
@@ -44,9 +46,15 @@ let pKw = Any |> PKeyword |> vAtom |> Value
 let pLi = Any |> PList |> Value
 let pNo = Any |> PNode |> Value
 
-let vLi = Value >> PList >> Value
-let pNC = Value >> PNode >> Value
+// value List/node containing
+let vLC = (List.map CValue) >> Value >> PList >> Value
+let vNC = (List.map CValue) >> Value >> PNode >> Value
 
+// value collectible list/node with collector appended
+let vcLC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> Value |> PNode |> Value
+let vcNC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> Value |> PNode |> Value
+
+// expression parts
 let aBo = Bool >> Atom
 let aInt = Integer >> Atom
 let aFl = Float >> Atom

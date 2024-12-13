@@ -9,7 +9,13 @@ type PatternWrapper<'a> = {
     any: Replacer option
 }
 
+type CollectablePatternWrapper<'a> = {
+    value: 'a
+    any: Replacer option
+}
+
 type MaybePatternWrapper<'a> = PatternWrapper<'a> option
+type MaybeCollectablePatternWrapper<'a> = CollectablePatternWrapper<'a> option
 
 // it's a list because there a very few base cases, too few that a hashmap would make sense
 // there is no significant performance difference (for now)
@@ -29,81 +35,18 @@ type NodeDecisionTree = {
     // grouped by same head
     value: (FirstLevelPattern * NodeDecisionTree) list // includes placeholder replacer
     ending: FirstLevelPattern option // includes correct replacer
-    //collector: Replacer option // like any but includes all the remining children instead of one
+    rest: Replacer option // like any but includes all the remining children instead of one
 }
     
 and ExpressionDecisionTree = {
     atom: MaybePatternWrapper<AtomDecisionTree>
-    list: MaybePatternWrapper<NodeDecisionTree>
-    node: MaybePatternWrapper<NodeDecisionTree>
+    list: MaybeCollectablePatternWrapper<NodeDecisionTree>
+    node: MaybeCollectablePatternWrapper<NodeDecisionTree>
 }
 
 and FirstLevelPattern = PatternWrapper<ExpressionDecisionTree option>
 
 type TreeResult = (Replacer * Expression list) option
-
-module ToString = 
-    let getPadding indent = String.replicate indent ".   "
-    let formatStructNone indent (values: (string * (string option)) list) =
-        // printfn "values: %A" values
-        values 
-        |> List.choose (fun (n,v) -> if v.IsNone then None else Some (sprintf "%s%s\n%s%s" (getPadding indent) n (getPadding indent) v.Value))
-        |> String.concat "\n"
-
-    let replacer indent replacer = sprintf "%s%A" (getPadding indent) replacer
-    let maybeReplacer indent (replacerVal: Replacer option) = replacerVal |> Option.map (replacer indent) 
-
-    let applyToPatternWrapper indent f (patternWrapper: PatternWrapper<'a>) = 
-        formatStructNone indent [
-            "value", patternWrapper.value |> f |> Some
-            "any", maybeReplacer indent patternWrapper.any
-        ]
-
-    let maybePatternMap indent (maybePatternMap: MaybePatternLeaf<'a> when 'a: comparison) =
-        match maybePatternMap with
-        | Some mapWrapper ->
-            formatStructNone indent [
-                "map", sprintf "%s%A" (getPadding indent) mapWrapper.value |> Some
-                "any", maybeReplacer indent mapWrapper.any
-            ]
-            |> Some
-        | None -> None
-
-    let leafDecisionTree indent (tree: AtomDecisionTree) =
-        formatStructNone indent [
-            "bool", maybePatternMap (indent+1) tree.bool
-            "integer", maybePatternMap (indent+1) tree.integer
-            "float", maybePatternMap (indent+1) tree.float
-            "string", maybePatternMap (indent+1) tree.string
-            "variable", maybePatternMap (indent+1) tree.variable
-            "keyword", maybePatternMap (indent+1) tree.keyword
-        ]
-
-    let rec nodeDecisionTree indent (nodeTree: NodeDecisionTree) =
-        let valueString =
-            nodeTree.value
-            |> List.map (fun (pattern, subTree) -> sprintf "%s?\n%s\n%s=>\n%s%s)" (getPadding indent) (firstLevelPattern indent pattern) (getPadding indent) (getPadding indent) (nodeDecisionTree (indent+1) subTree))
-            |> String.concat (sprintf "\n%s---\n" (getPadding indent))
-
-        formatStructNone indent [
-            "value", sprintf "%s" valueString |> Some
-            "ending", nodeTree.ending |> Option.map (firstLevelPattern (indent+1))
-        ]
-
-    and expressionDecisionTree indent (exprTree: ExpressionDecisionTree) =
-        formatStructNone indent [
-            "atom", exprTree.atom |> Option.map (applyToPatternWrapper indent (leafDecisionTree indent))
-            "list", exprTree.list |> Option.map (applyToPatternWrapper indent (nodeDecisionTree indent))
-            "node", exprTree.node |> Option.map (applyToPatternWrapper indent (nodeDecisionTree indent))
-        ]
-
-    and firstLevelPattern (indent: int) (pattern: FirstLevelPattern) =
-        formatStructNone indent [
-            "value", pattern.value |> Option.map (expressionDecisionTree (indent+1))
-            "any", maybeReplacer indent pattern.any
-        ]
-
-    let firstLevel pattern = firstLevelPattern 0 pattern
 
 let ifEmptyNoneElseApply f (l: 'a list) = if l.Length = 0 then None else f l |> Some
 
@@ -159,36 +102,48 @@ type Builder(allRules: RewriteRule list) =
         { value = Builder.buildAtomInner valueRules; any = anyRule }
 
     // Lists and Nodes
-    static member private buildNodeInner (rules: (Pattern list * Replacer) list) =
+    static member private buildNodeInner (rules: (CollectablePattern list * Replacer) list) =
         let rulesEnding, rulesContinuing = 
             rules 
-            |> List.filter (fun (pattern, _) -> pattern.Length > 0) 
-            |> List.partition (fun (pattern: Pattern list, _) -> pattern.Length = 1)
+            |> List.partition (fun (pattern: CollectablePattern list, _) -> pattern.Length = 1)
 
         let ending: FirstLevelPattern option = 
             rulesEnding
-            |> List.map (fun (pattern, replacer) -> pattern.Head, replacer)
+            |> List.choose (fun (pattern, replacer) -> 
+                match pattern.Head with
+                | CRest -> None
+                | CValue head -> Some (head, replacer)
+            )
             |> Builder.getFirstLevelPattern
             |> Some
+
+        let rest: Replacer option =
+            rulesEnding
+            |> List.filter (fun (pattern, _) -> pattern.Head = CRest)
+            |> List.tryHead
+            |> Option.map snd
             
         let nodes = 
             rulesContinuing 
-            |> List.groupBy (fun (pattern: Pattern list, _) -> pattern.Head) 
-            |> List.choose (fun (head, subRules) ->
-                let nodeRules = 
-                    subRules 
-                    |> List.map (fun (pattern, replacer) -> pattern.Tail, replacer)
+            |> List.groupBy (fun (pattern: CollectablePattern list, _) -> pattern.Head) 
+            |> List.choose (fun (chead, subRules) ->
+                match chead with
+                | CRest -> failwith "Rest patterns can only be used at the end of a pattern."
+                | CValue head -> 
+                    let nodeRules = 
+                        subRules 
+                        |> List.map (fun (pattern, replacer) -> pattern.Tail, replacer)
 
-                if nodeRules.Length = 0 then None else
+                    if nodeRules.Length = 0 then None else
 
-                let failRule = (head, fun _ -> failwith "Call to replacer for a pattern that's not fully matched")
+                    let failRule = (head, fun _ -> failwith "Call to replacer for a pattern that's not fully matched")
 
-                Some (Builder.getFirstLevelPattern [failRule], Builder.buildNodeInner nodeRules)
+                    Some (Builder.getFirstLevelPattern [failRule], Builder.buildNodeInner nodeRules)
             )
 
-        { value = nodes; ending = ending }
+        { value = nodes; ending = ending; rest = rest }
 
-    static member private buildNode (rules: (PatternUnion<Pattern list> * Replacer) list) =
+    static member private buildNode (rules: (PatternUnion<CollectablePattern list> * Replacer) list) =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "node" rules
         { value = Builder.buildNodeInner valueRules; any = anyRule }
 
@@ -211,7 +166,7 @@ type Builder(allRules: RewriteRule list) =
             list = ifEmptyNoneElseApply Builder.buildNode listRuleSet
         }
 
-    static member private getFirstLevelPattern (rules: (PatternUnion<ExpressionPattern> * Replacer) list) =
+    static member private getFirstLevelPattern (rules: (Pattern * Replacer) list) =
         let valueRules, anyRule = Builder.separateAnyFromValueBased "first level" rules
         { value = ifEmptyNoneElseApply Builder.buildExpression valueRules; any = anyRule }
 
@@ -256,11 +211,14 @@ type Walker(tree: FirstLevelPattern) =
         tree |> List.tryPick (fun (flp, next) -> Walker.tryGetNodeTreeResultInner wrapperType children flp next)
 
     static member private walkNodeInner wrapperType (pattern: NodeDecisionTree) (children: Expression list) = 
-        // would be nice but wont always work, e.g. with denesting patterns. it would just select any first item of any node
-        if children.Length = 1 then pattern.ending |> Option.bind (fun pattern -> Walker.walk pattern children.Head) else None
-        |> Option.orElse (children |> Walker.tryGetNodeTreeResult wrapperType pattern.value)
+        // this order is crucial
+        // anything that could cut of another pattern should be check later than that one
+        // continuing rules first -- then ending rules -- then rest/collector rules
+        if  children.Length > 0 then Walker.tryGetNodeTreeResult wrapperType pattern.value children else None
+        |> Option.orElse (if children.Length = 1 then pattern.ending |> Option.bind (fun pattern -> Walker.walk pattern children.Head) else None)
+        |> Option.orElse (if children.Length > 0 then pattern.rest |> Option.map (fun replacer -> replacer, [Node children]) else None)
 
-    static member private walkNode wrapperType (children: Expression list) (pattern: PatternWrapper<NodeDecisionTree>) = 
+    static member private walkNode wrapperType (children: Expression list) (pattern: CollectablePatternWrapper<NodeDecisionTree>) = 
         children |> Walker.walkNodeInner wrapperType pattern.value |> Option.orElse (Option.tupleWithRev pattern.any [wrapperType children])
         
     // Expressions

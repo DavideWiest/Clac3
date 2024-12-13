@@ -12,7 +12,7 @@ type FunctionalApplication(funcs: S1.FunctionDefinition array, expressions: S1.F
 
     override this.eval args = 
         let exprs, store, bindingRelation = args
-        exprs |> Array.map (evalExpr bindingRelation store) |> Seq.ofArray
+        exprs |> Array.map (evalExpr store) |> Seq.ofArray
 
     override this.getEvalArgs =
         let bindingMap = funcs |> Array.map (fun f -> f.ident, BFuncDef f) |> Map.ofArray

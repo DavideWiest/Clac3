@@ -7,7 +7,6 @@ open Clac3.P1.Expression
 type PatternUnion<'a> = 
     | Value of 'a
     | Any
-    // | Collector
 
 type AtomPattern = 
     | PBool of PatternUnion<bool>
@@ -19,10 +18,13 @@ type AtomPattern =
 
 type ExpressionPattern =
     | PAtom of PatternUnion<AtomPattern>
-    | PList of PatternUnion<Pattern list>
-    | PNode of PatternUnion<Pattern list>
+    | PList of PatternUnion<CollectablePattern list>
+    | PNode of PatternUnion<CollectablePattern list>
 
 and Pattern = PatternUnion<ExpressionPattern>
+and CollectablePattern =
+    | CValue of Pattern
+    | CRest
 
 // Rewrite rules
 

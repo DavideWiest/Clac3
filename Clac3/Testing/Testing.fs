@@ -1,4 +1,4 @@
-﻿module Clac3.P1.Testing
+﻿module Clac3.Testing.Testing
 
 open Clac3.P1.Expression
 open Clac3.P1.Domain
@@ -7,11 +7,11 @@ open Clac3.P1.BuiltIn
 
 let testRulesRaw = [
     {
-        pattern = pNC [vKw "factorial"; vInt 0]
+        pattern = vNC [vKw "factorial"; vInt 0]
         replacer = Args.printAndPass >> Args.zero (aInt 1)
     }
     {
-        pattern = pNC [vKw "factorial"; pInt]
+        pattern = vNC [vKw "factorial"; pInt]
         replacer = Args.one (fun n ->
             Node [
                 n;
@@ -31,20 +31,24 @@ let testRulesRaw = [
         replacer = Args.zero (aInt 5)
     }
     {
-        pattern = pNC [vKw "pow"; pInt; pInt]
+        pattern = vNC [vKw "pow"; pInt; pInt]
         replacer = Args.two (fun a b -> pown (Args.getInt a) (Args.getInt b) |> aInt)
     }
     {
-        pattern = pNC [vKw "replicateString"; pInt; pStr]
+        pattern = vNC [vKw "replicateString"; pInt; pStr]
         replacer = Args.two(fun a b -> String.replicate (Args.getInt a) (Args.getString b) |> aStr)
     }
     {
-        pattern = pNC [vKw "test"; pNC [vStr "Hello World!"]]
+        pattern = vNC [vKw "test"; vNC [vStr "Hello World!"]]
         replacer = Args.zero (aStr "Hello World! (base case)")
     }
     {
-        pattern = pNC [vKw "test"; pNC [pStr]]
+        pattern = vNC [vKw "test"; vNC [pStr]]
         replacer = Args.one (fun s -> aStr (Args.getString s + "(not base case)"))
+    }
+    {
+        pattern = vcNC [pInt; vKw "plus"]
+        replacer = Args.two (fun a rest -> Node [aKw "plus"; aInt (Args.getInt a); Node (Args.getNode rest)])
     }
 ]
 
@@ -57,4 +61,5 @@ let  testExprs = [
     Node [aKw "replicateString"; aInt 3; aStr "Hello World (replicated)"] // extraction of two values by type
     Node [aKw "test"; Node [aStr "Hello World!"]] // nested search
     Node [aKw "test"; Node [aStr "other string"]] // nested search and extracting values
+    Node [aInt 1; aKw "plus"; aInt 2; aKw "plus"; aInt 3]
 ]

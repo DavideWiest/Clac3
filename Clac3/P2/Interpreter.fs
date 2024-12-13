@@ -4,9 +4,7 @@ open Clac3.P2.FExpression
 open Clac3.P2.Function
 
 // TODO: currying, possible edge cases
-// TODO: functions should return the Binding type to allow for currying
-
-// TODO: pass by reference + re-assign overwritten variables, storing them in a separate array
+// TODO: functions should be able to return functions
 
 let rec handleNode (bindings: S2.BindingStore) (ident, argsBefore) =
     // is always some, or it would fail in normalization
@@ -19,15 +17,17 @@ let rec handleNode (bindings: S2.BindingStore) (ident, argsBefore) =
         match fn.lambda with
         | BuiltIn fn -> fn args
         | Custom (argIdents, body) ->
+            // using Array.copy instead is not faster
             let mutable overwrittenBindings = []
-            for i in 0..args.Length-1 do
+
+            args |> Array.iteri (fun i arg ->
                 overwrittenBindings <- (argIdents[i], bindings[argIdents[i]])::overwrittenBindings
-                bindings[argIdents[i]] <- Some (BValue args[i])
+                bindings[argIdents[i]] <- Some (BValue arg)
+            )
 
             let result = evalExpr bindings body
 
-            for (i, value) in overwrittenBindings do 
-                bindings[i] <- value
+            overwrittenBindings |> List.iter (fun (i, value) -> bindings[i] <- value)
 
             result
     

@@ -19,7 +19,7 @@ let private tryFindInPatternMap wrapperFn (key: 'a) (patternMap: MaybePatternLea
         |> Option.orElse (pdt.any |> Option.map withKey)
     )
     
-let private tryFindAtomReplacer (tree: AtomDecisionTree) = function
+let private tryFindAtomReplacer tree = function
     | Bool b -> tree.bool |> tryFindInPatternMap Bool b
     | Integer i -> tree.integer |> tryFindInPatternMap Integer i
     | Float f -> tree.float |> tryFindInPatternMap Float f
@@ -27,20 +27,24 @@ let private tryFindAtomReplacer (tree: AtomDecisionTree) = function
     | Variable v -> tree.variable |> tryFindInPatternMap Variable v
     | Keyword k -> tree.keyword |> tryFindInPatternMap Keyword k
 
-let private walkAtom (atom: Atom) (pattern: PatternWrapper<AtomDecisionTree>) = 
-    atom |> tryFindAtomReplacer pattern.value |> Option.orElse (Option.tupleWithRev pattern.any [Atom atom])
+let private walkAtom atom (pattern: PatternWrapper<AtomDecisionTree>) = 
+    atom 
+    |> tryFindAtomReplacer pattern.value 
+    |> Option.orElse (Option.tupleWithRev pattern.any [Atom atom])
 
 // Lists and Nodes
 let private tryGetNodeTreeResultInner wrapperType (children: Expression list) (flp: FirstLevelPattern) (next: NodeDecisionTree) =
     walk flp children.Head
     |> Option.bind (fun (_, args) -> 
-        children.Tail |> walkNodeInner wrapperType next |> Option.map (fun (replacer, argsTail) -> replacer, (args @ argsTail))
+        children.Tail 
+        |> walkNodeInner wrapperType next 
+        |> Option.map (fun (replacer, argsTail) -> replacer, (args @ argsTail))
     )
 
 let private tryGetNodeTreeResult wrapperType (tree: (FirstLevelPattern * NodeDecisionTree) list) (children: Expression list) = 
     tree |> List.tryPick (fun (flp, next) -> tryGetNodeTreeResultInner wrapperType children flp next)
 
-let private walkNodeInner wrapperType (pattern: NodeDecisionTree) (children: Expression list) = 
+let private walkNodeInner wrapperType pattern (children: Expression list) = 
     // this order is crucial
     // anything that could cut of another pattern should be check later than that one
     // continuing rules first -- then ending rules -- then rest/collector rules

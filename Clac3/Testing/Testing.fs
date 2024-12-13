@@ -4,6 +4,7 @@ open Clac3.P1.Expression
 open Clac3.P1.RewriteRule
 open Clac3.P1.DomainUtil
 open Clac3.P1.BuiltIn
+open Clac3.P1.Application
 
 let testRulesRaw = [
     {
@@ -63,3 +64,7 @@ let  testExprs = [
     Node [aKw "test"; Node [aStr "other string"]] // nested search and extracting values
     Node [aInt 1; aKw "plus"; aInt 2; aKw "plus"; aInt 3]
 ]
+
+let runTestsPhase1 () =
+    let ruleTestApp = RewriteRuleApplication(testRules, testExprs)
+    ruleTestApp.runProgram |> Seq.iter (fun (result) -> printfn "%s" (ToString.expression result))

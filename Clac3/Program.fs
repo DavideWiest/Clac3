@@ -122,7 +122,4 @@ let measureAppRepeatedly n (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) 
 
 //measureAppRepeatedly 20 appRules ToString.expression
 //measureAppRepeatedly 20 appFunc P2ToString.atom
-//measureAppRepeatedly 20 appFunc2 P2ToString.atom
-
-let ruleTestApp = RewriteRuleApplication(testRules, testExprs)
-ruleTestApp.runProgram |> Seq.iter (fun (result) -> printfn "%s" (ToString.expression result))
+measureAppRepeatedly 100 appFunc2 P2ToString.atom

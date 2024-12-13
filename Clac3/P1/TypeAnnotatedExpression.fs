@@ -11,10 +11,11 @@ type Type =
     | TKeyword
     | TList of Type
 
-type TypeAnnotatedExpression =
-    | TAAtom of Atom
-    // list is a recursive type, but won't evaluate to some other type 
-    // the annotation is only for node, as its the only option that can evaluate to a different type
-    // however: maybe a list should have a type too, for type checking
-    | TAList of TypeAnnotatedExpression list 
-    | TANode of TypeAnnotatedExpression list * Type
+    | TFunc of Type list * Type // separate in and output types just for convenience
+
+type TAFnCall = string * (TypeAnnotatedExpression list)
+
+and TypeAnnotatedExpression =
+    | TAAtom of Type * Atom
+    | TAList of Type * TypeAnnotatedExpression list 
+    | TANode of Type * TAFnCall

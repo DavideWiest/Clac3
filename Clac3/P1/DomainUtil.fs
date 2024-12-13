@@ -46,13 +46,13 @@ let pKw = Any |> PKeyword |> vAtom |> Value
 let pLi = Any |> PList |> Value
 let pNo = Any |> PNode |> Value
 
-// value List/node containing
-let vLC = (List.map CValue) >> Value >> PList >> Value
-let vNC = (List.map CValue) >> Value >> PNode >> Value
+// List/node containing
+let LC = (List.map CValue) >> Value >> PList >> Value
+let NC = (List.map CValue) >> Value >> PNode >> Value
 
-// value collectible list/node with collector appended
-let vcLC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> Value |> PNode |> Value
-let vcNC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> Value |> PNode |> Value
+// list/node containing with collector
+let LCC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> Value |> PNode |> Value
+let NCC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> Value |> PNode |> Value
 
 // expression parts
 let aBo = Bool >> Atom
@@ -81,28 +81,3 @@ module Args =
     let printAndPass (args: Expression list) = 
         printfn "args: %A" (args |> List.map ToString.expression)
         args
-
-    let getNode = function
-        | Node children -> children
-        | item -> Error.typeError "node" item
-    let getList = function
-        | List l -> l
-        | item -> Error.typeError "list" item
-    let getBool = function
-        | Atom (Bool b) -> b
-        | item -> Error.typeError "bool" item
-    let getInt = function
-        | Atom (Integer i) -> i
-        | item -> Error.typeError "int" item
-    let getFloat = function
-        | Atom (Float f) -> f
-        | item -> Error.typeError "float" item
-    let getString = function
-        | Atom (String s) -> s
-        | item -> Error.typeError "string" item
-    let getVariable = function
-        | Atom (Variable v) -> v
-        | item -> Error.typeError "variable" item
-    let getKeyword = function
-        | Atom (Keyword kw) -> kw
-        | item -> Error.typeError "keyword" item

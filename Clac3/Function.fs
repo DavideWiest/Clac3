@@ -1,6 +1,6 @@
-﻿module Clac3.P2.Function
+﻿module Clac3.Function
 
-open Clac3.P2.FExpression
+open Clac3.FExpression
 
 type FunctionBody<'a, 'b> = 
     | BuiltIn of (FAtom array -> FAtom) 
@@ -11,7 +11,6 @@ type FunctionDefinition<'a, 'b> = {
     lambda: FunctionBody<'a, 'b>
 }
 
-// TODO: different stores for these 2??
 type Binding<'a, 'b> = 
     | BValue of FAtom
     | BFuncDef of FunctionDefinition<'a, 'b>

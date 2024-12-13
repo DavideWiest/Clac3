@@ -1,8 +1,8 @@
 ﻿module Clac3.P2.BuiltIn
 
-open Clac3.P2.FExpression
+open Clac3.FExpression
 open Clac3.P2.DomainUtil
-open Clac3.P2.Function
+open Clac3.Function
 
 module Funcs =
     module Ints =

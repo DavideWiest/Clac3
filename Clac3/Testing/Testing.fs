@@ -8,11 +8,11 @@ open Clac3.P1.Application
 
 let testRulesRaw = [
     {
-        pattern = vNC [vKw "factorial"; vInt 0]
+        pattern = NC [vKw "factorial"; vInt 0]
         replacer = Args.printAndPass >> Args.zero (aInt 1)
     }
     {
-        pattern = vNC [vKw "factorial"; pInt]
+        pattern = NC [vKw "factorial"; pInt]
         replacer = Args.one (fun n ->
             Node [
                 n;
@@ -32,23 +32,23 @@ let testRulesRaw = [
         replacer = Args.zero (aInt 5)
     }
     {
-        pattern = vNC [vKw "pow"; pInt; pInt]
+        pattern = NC [vKw "pow"; pInt; pInt]
         replacer = Args.two (fun a b -> pown (Args.getInt a) (Args.getInt b) |> aInt)
     }
     {
-        pattern = vNC [vKw "replicateString"; pInt; pStr]
+        pattern = NC [vKw "replicateString"; pInt; pStr]
         replacer = Args.two(fun a b -> String.replicate (Args.getInt a) (Args.getString b) |> aStr)
     }
     {
-        pattern = vNC [vKw "test"; vNC [vStr "Hello World!"]]
+        pattern = NC [vKw "test"; NC [vStr "Hello World!"]]
         replacer = Args.zero (aStr "Hello World! (base case)")
     }
     {
-        pattern = vNC [vKw "test"; vNC [pStr]]
+        pattern = NC [vKw "test"; NC [pStr]]
         replacer = Args.one (fun s -> aStr (Args.getString s + "(not base case)"))
     }
     {
-        pattern = vcNC [pInt; vKw "plus"]
+        pattern = NCC [pInt; vKw "plus"]
         replacer = Args.two (fun a rest -> Node [aKw "plus"; aInt (Args.getInt a); Node (Args.getNode rest)])
     }
 ]

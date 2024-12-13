@@ -2,7 +2,6 @@
 
 open Clac3.Util
 open Clac3.P1.Expression
-open Clac3.P1.RewriteRule
 open Clac3.P1.DecisionTree.Domain
 
 // Atoms
@@ -33,7 +32,7 @@ let private walkAtom atom (pattern: PatternWrapper<AtomDecisionTree>) =
     |> Option.orElse (Option.tupleWithRev pattern.any [Atom atom])
 
 // Lists and Nodes
-let private tryGetNodeTreeResultInner wrapperType (children: Expression list) (flp: FirstLevelPattern) (next: NodeDecisionTree) =
+let private tryGetNodeTreeResultInner wrapperType (children: Expression list) (flp: FirstLevelPattern, next: NodeDecisionTree) =
     walk flp children.Head
     |> Option.bind (fun (_, args) -> 
         children.Tail 
@@ -41,14 +40,11 @@ let private tryGetNodeTreeResultInner wrapperType (children: Expression list) (f
         |> Option.map (fun (replacer, argsTail) -> replacer, (args @ argsTail))
     )
 
-let private tryGetNodeTreeResult wrapperType (tree: (FirstLevelPattern * NodeDecisionTree) list) (children: Expression list) = 
-    tree |> List.tryPick (fun (flp, next) -> tryGetNodeTreeResultInner wrapperType children flp next)
-
 let private walkNodeInner wrapperType pattern (children: Expression list) = 
     // this order is crucial
     // anything that could cut of another pattern should be check later than that one
     // continuing rules first -- then ending rules -- then rest/collector rules
-    if  children.Length > 0 then tryGetNodeTreeResult wrapperType pattern.value children else None
+    if  children.Length > 0 then List.tryPick (tryGetNodeTreeResultInner wrapperType children) pattern.value else None
     |> Option.orElse (if children.Length = 1 then pattern.ending |> Option.bind (fun pattern -> walk pattern children.Head) else None)
     |> Option.orElse (if children.Length > 0 then pattern.rest |> Option.map (fun replacer -> replacer, [Node children]) else None)
 
@@ -64,7 +60,7 @@ let private walkExpression tree = function
 // First level
 let walk (tree: FirstLevelPattern) (expr: Expression) = 
     tree.value |> Option.bind (fun v -> walkExpression v expr) |> Option.orElse (Option.tupleWithRev tree.any [expr])
-      
+
 type Walker(tree: FirstLevelPattern) = 
     member this.tryReplace expr = 
         Walker.walk tree expr |> Option.map (fun (replacer, args) -> replacer args)

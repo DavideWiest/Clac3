@@ -1,4 +1,4 @@
-﻿module Clac3.P2.FExpression
+﻿module Clac3.FExpression
 
 type FAtom =
     | FBool of bool

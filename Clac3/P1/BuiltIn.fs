@@ -18,39 +18,31 @@ module Helper =
 
     let buildArithmeticRuleSetInfixOp op opInt opFloat = [
         {
-            pattern = vNC [pInt; vKw op; pInt]
-            replacer = Args.two (fun a b -> opInt (Args.getInt a) (Args.getInt b))
+            pattern = NC [pInt; vKw op; pInt]
+            replacer = Args.two (fun a b -> Node [aKw opInt; a; b])
         }
         {
-            pattern = vNC [pFl; vKw op; pFl]
-            replacer = Args.two (fun a b -> opFloat (Args.getFloat a) (Args.getFloat b))
-        }
-        {
-            pattern = vNC [pFl; vKw op; pInt]
-            replacer = Args.two (fun a b -> opFloat (Args.getFloat a) (float (Args.getInt b)))
-        }
-        {
-            pattern = vNC [pInt; vKw op; pFl]
-            replacer = Args.two (fun a b -> opFloat (float (Args.getInt a)) (Args.getFloat b))
+            pattern = NC [pFl; vKw op; pFl]
+            replacer = Args.two (fun a b -> Node [aKw opFloat; a; b])
         }
     ]
 
     let buildEvaluatedValueRuleSetInfixOp op replacement = 
         List.allPairs leafAny leafAny
         |> List.map (fun (a, b) -> 
-            { pattern = vNC [a; vKw op; b]; replacer = replacement }
+            { pattern = NC [a; vKw op; b]; replacer = replacement }
         )
 
     let buildEvaluatedValueRulePrefixOp op replacement = 
         leafAny
         |> List.map (fun a -> 
-            { pattern = vNC [vKw op; a]; replacer = replacement }
+            { pattern = NC [vKw op; a]; replacer = replacement }
         )
 
 // DENESTING
 let denestingRules = [
     {
-        pattern = vNC [Any]
+        pattern = NC [Any]
         replacer = (Args.one (fun item -> item))
     }
 ]
@@ -58,96 +50,84 @@ let denestingRules = [
 // CONTROL FLOW
 let controlFlowRules = [
     {
-        pattern = vNC [vKw "if"; pBo; vKw "then"; Any; vKw "else"; Any]
-        replacer = Args.three (fun cond thenExpr elseExpr -> if Args.getBool cond then thenExpr else elseExpr)
+        pattern = NC [vKw "if"; pBo; vKw "then"; Any; vKw "else"; Any]
+        replacer = Args.three (fun cond thenExpr elseExpr -> Node [aKw "ifthenelse"; cond; thenExpr; elseExpr])
     }
 ]
 
 // LOGIC
-let logicRules = 
-    Helper.buildEvaluatedValueRuleSetInfixOp "=" (Args.two (fun left right -> aBo (left = right)))
-    @ Helper.buildEvaluatedValueRuleSetInfixOp "<>" (Args.two (fun left right -> aBo (left <> right)))
+let equalityRules = [
+    {
+        pattern = NC [Any; vKw "="; Any]
+        replacer = Args.two (fun left right -> Node [aKw "eq"; left; right])
+    }
+    {
+        pattern = NC [Any; vKw "!="; Any]
+        replacer = Args.two (fun left right -> Node [aKw "not"; Node [aKw "eq"; left; right]])
+    }
+    // TODO: greater, less, greaterOrEqual, lessOrEqual
+]
 
 // BOOLEAN ALGEBRA
 let booleanRules = [
     {
-        pattern = vNC [pBo; vKw "&"; pBo]
-        replacer = Args.two (fun a b -> aBo (Args.getBool a && Args.getBool b))
+        pattern = NCC [pBo; vKw "&"]
+        replacer = Args.two (fun a rest -> Node [aKw "and"; a; rest])
     }
     {
-        pattern = vNC [pBo; vKw "|"; pBo]
-        replacer = Args.two (fun a b -> aBo (Args.getBool a || Args.getBool b))
+        pattern = NCC [pBo; vKw "|"]
+        replacer = Args.two (fun a rest -> Node [aKw "or"; a; rest])
     }
     {
-        pattern = vNC [vKw "!"; pBo]
-        replacer = Args.one (fun a -> aBo (not (Args.getBool a)))
-    }
-]
-
-// REFLECTION
-let reflectionRules = 
-    Helper.buildEvaluatedValueRulePrefixOp "typeof" (Args.one (fun expr -> aStr (expr.GetType().Name))) 
-    @ [
-    {
-        pattern = vNC [vKw "stringify"; Any]
-        replacer = Args.one (fun expr -> expr |> ToString.expression |> aStr)
+        pattern = NC [vKw "!"; pBo]
+        replacer = Args.one (fun a -> Node [aKw "not"; a])
     }
 ]
 
 // ARITHMETIC OPERATIONS
 let arithmeticRules = 
     [
-        "+", (+), (+)
-        "-", (-), (-)
-        "*", (*), (*)
-        "/", (/), (/)
-        "**", pown, ( ** )
+        "+", "add"
+        "-", "substract"
+        "*", "mul"
+        "/", "div"
+        "**", "pow"
     ] 
-    |> List.collect (fun (op, opInt, opFloat) -> Helper.buildArithmeticRuleSetInfixOp op (fun a b -> opInt a b |> aInt) (fun a b -> opFloat a b |> aFl))
+    |> List.collect (fun (op, fnName) -> Helper.buildArithmeticRuleSetInfixOp op (fnName + "Int") (fnName + "Float"))
+    |> List.append [{ pattern = NCC [pInt; vKw "*"; pBo]; replacer = Args.two (fun i b -> Node [aKw "ifthenelse"; b; i; aInt 0]) }]
+    |> List.append [{ pattern = NCC [pFl; vKw "*"; pBo]; replacer = Args.two (fun i b -> Node [aKw "ifthenelse"; b; i; aFl 0]) }]
 
 // LISTS
 let listRules = 
     [
         {
-            pattern = vNC [pLi; vKw "+"; pLi]
-            replacer = Args.two (fun a b -> Args.getList a @ Args.getList b |> List)
+            pattern = NCC [pLi; vKw "+"]
+            replacer = Args.two (fun l rest -> Node [aKw "List.append"; l; rest])
         }
         {
-            pattern = vNC [pLi; vKw "map"; pNo]
-            replacer = Args.two (fun listExpr mapExpr -> 
-                Args.getList listExpr
-                |> List.map (fun item -> Args.getNode mapExpr @ [item])
-                |> List.map Node
-                |> List
-            )
+            pattern = NC [pLi; vKw "map"; pNo]
+            replacer = Args.two (fun listExpr mapExpr -> Node [aKw "List.map"; listExpr; mapExpr])
         }
-        {
-            pattern = vNC [pLi; vKw "::"; Any]
-            replacer = Args.two (fun a b -> Args.getList a @ [b] |> List)
-        }
-        {
-            pattern = vNC [Any; vKw "::"; pLi]
-            replacer = Args.two (fun a b -> b :: Args.getList a |> List)
-        }
+        // TODO: cons operator, concat, filter, fold, reduce, zip
     ]
 
 // STRINGS
 let stringRules = [
     {
-        pattern = vNC [pStr; vKw "+"; pStr]
-        replacer = Args.two (fun a b -> Args.getString a + Args.getString b |> aStr)
+        pattern = NCC [pStr; vKw "+"]
+        replacer = Args.two (fun s rest -> Node [aKw "String.append"; s; rest])
     }
+    // TODO: split, join, replace, trim, toUpper, toLower, startsWith, endsWith, contains, indexOf, lastIndexOf, substring, length
 ]
 
 let functionalCompositionRules = [
     {
-        pattern = vNC [Any; vKw "|>"; pNo]
-        replacer = Args.two (fun part1 part2 -> (Args.getNode part2)@[part1] |> aNo)
+        pattern = NCC [Any; vKw "|>"; Any]
+        replacer = Args.two (fun input func-> Node [func; input]) // func will be flattened later if it's a node
     }
+    // TODO: pipeBackward, compose, flip, lambda syntax
 ]
 
 let coreRuleSet =
-    denestingRules @ logicRules @ booleanRules @ reflectionRules @ arithmeticRules @ listRules @ stringRules @ functionalCompositionRules
-    // branching rules won't work because the substituioninterpreter is depth-first now
-    // @ controlFlowRules 
+    denestingRules @ controlFlowRules @ equalityRules @ booleanRules @ arithmeticRules @ listRules @ stringRules @ functionalCompositionRules
     

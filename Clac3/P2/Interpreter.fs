@@ -1,7 +1,7 @@
 ﻿module Clac3.P2.Interpreter
 
-open Clac3.P2.FExpression
-open Clac3.P2.Function
+open Clac3.FExpression
+open Clac3.Function
 
 // TODO: currying, possible edge cases
 // TODO: functions should be able to return functions

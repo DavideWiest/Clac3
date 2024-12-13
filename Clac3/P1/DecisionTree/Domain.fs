@@ -36,7 +36,7 @@ type NodeDecisionTree = {
     ending: FirstLevelPattern option // includes correct replacer
     rest: Replacer option // like any but includes all the remining children instead of one
 }
-    
+
 and ExpressionDecisionTree = {
     atom: MaybePatternWrapper<AtomDecisionTree>
     list: MaybeCollectablePatternWrapper<NodeDecisionTree>

@@ -2,7 +2,7 @@
 
 
 open Clac3.DomainUtil
-open Clac3.P2.FExpression
+open Clac3.FExpression
 
 module rec P2ToString =
     let atom = function

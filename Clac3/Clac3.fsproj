@@ -9,12 +9,12 @@
     <Compile Include="Util.fs" />
     <Compile Include="DomainUtil.fs" />
     <Compile Include="Application.fs" />
+    <Compile Include="Expression.fs" />
+    <Compile Include="TypeAnnotatedExpression.fs" />
     <Compile Include="FExpression.fs" />
     <Compile Include="Function.fs" />
-    <Compile Include="P1\Expression.fs" />
     <Compile Include="P1\RewriteRule.fs" />
     <Compile Include="P1\DomainUtil.fs" />
-    <Compile Include="P1\TypeAnnotatedExpression.fs" />
     <Compile Include="P1\Interpreter.fs" />
     <Compile Include="P1\DecisionTree\Domain.fs" />
     <Compile Include="P1\DecisionTree\Builder.fs" />

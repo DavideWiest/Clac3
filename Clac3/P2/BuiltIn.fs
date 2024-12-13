@@ -1,8 +1,9 @@
 ﻿module Clac3.P2.BuiltIn
 
+open Clac3.TypeAnnotatedExpression
 open Clac3.FExpression
-open Clac3.P2.DomainUtil
 open Clac3.Function
+open Clac3.P2.DomainUtil
 
 module Funcs =
     module Ints =
@@ -19,20 +20,29 @@ module Funcs =
         let div = P2Args.two(fun a b -> P2Args.getFloat(a) / P2Args.getFloat(b) |> FFloat)
         let eq = P2Args.two(fun a b -> P2Args.getFloat(a) = P2Args.getFloat(b) |> FBool)
 
-let numericFuncs = 
+let intFuncs = 
     [|
         ("addInts", Funcs.Ints.add)
         ("subInts", Funcs.Ints.sub)
         ("mulInts", Funcs.Ints.mul)
         ("divInts", Funcs.Ints.div)
-        ("intEquals", Funcs.Ints.eq)
+    |]
+    |> Array.map (fun (name, body) -> { ident = name; lambda = BuiltIn body; signature = [TInteger; TInteger], TInteger })
 
+let floatFuncs = 
+    [|
         ("addFloats", Funcs.Floats.add)
         ("subFloats", Funcs.Floats.sub)
         ("mulFloats", Funcs.Floats.mul)
         ("divFloats", Funcs.Floats.div)
-        ("floatEquals", Funcs.Floats.eq)
-    |] 
-    |> Array.map (fun (name, body) -> { ident = name; lambda = BuiltIn body })
+    |]
+    |> Array.map (fun (name, body) -> { ident = name; lambda = BuiltIn body; signature = [TFloat; TFloat], TFloat })
 
-let coreFunctions: S1.FunctionDefinition array = numericFuncs
+let equalityFuncs = 
+    [|
+        ("intEquals", Funcs.Ints.eq, TInteger)
+        ("floatEquals", Funcs.Floats.eq, TFloat)
+    |]
+    |> Array.map (fun (name, body, returnType) -> { ident = name; lambda = BuiltIn body; signature = [returnType; returnType], TBool })
+    
+let coreFunctions: S1.FunctionDefinition array = Array.concat [intFuncs; floatFuncs; equalityFuncs]

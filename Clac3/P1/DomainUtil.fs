@@ -1,7 +1,7 @@
 ﻿module Clac3.P1.DomainUtil
 
 open Clac3.DomainUtil
-open Clac3.P1.Expression
+open Clac3.Expression
 open Clac3.P1.RewriteRule
 
 module rec ToString =
@@ -81,3 +81,7 @@ module Args =
     let printAndPass (args: Expression list) = 
         printfn "args: %A" (args |> List.map ToString.expression)
         args
+
+    let getChildren = function
+        | Node children -> children
+        | expr -> Error.typeError "node" expr

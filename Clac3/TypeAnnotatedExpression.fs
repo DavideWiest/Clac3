@@ -1,6 +1,6 @@
-﻿module Clac3.P1.TypeAnnotatedExpression
+﻿module Clac3.TypeAnnotatedExpression
 
-open Clac3.P1.Expression
+open Clac3.Expression
 
 type Type =
     | TBool

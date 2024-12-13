@@ -1,4 +1,4 @@
-﻿module Clac3.P1.Expression
+﻿module Clac3.Expression
 
 // Expressions
 type Atom = 

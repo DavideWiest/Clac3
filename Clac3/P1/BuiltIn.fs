@@ -1,7 +1,7 @@
 ﻿module Clac3.P1.BuiltIn
 
 open Clac3.DomainUtil
-open Clac3.P1.Expression
+open Clac3.Expression
 open Clac3.P1.DomainUtil
 open Clac3.P1.RewriteRule
 

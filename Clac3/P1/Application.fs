@@ -1,6 +1,6 @@
 ﻿module Clac3.P1.Application
 
-open Clac3.P1.Expression
+open Clac3.Expression
 open Clac3.Application
 open Clac3.P1.SubstitutionInterpreter
 open Clac3.P1.RewriteRule

@@ -1,6 +1,7 @@
 ﻿module Clac3.Function
 
 open Clac3.FExpression
+open Clac3.TypeAnnotatedExpression
 
 type FunctionBody<'a, 'b> = 
     | BuiltIn of (FAtom array -> FAtom) 
@@ -8,6 +9,7 @@ type FunctionBody<'a, 'b> =
 
 type FunctionDefinition<'a, 'b> = {
     ident: 'a
+    signature: Type list * Type
     lambda: FunctionBody<'a, 'b>
 }
 

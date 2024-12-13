@@ -3,9 +3,10 @@
 open Clac3.P1.Expression
 open Clac3.Application
 open Clac3.P1.SubstitutionInterpreter
-open Clac3.P1.Domain
+open Clac3.P1.RewriteRule
+open Clac3.P1.DecisionTree.Builder
+open Clac3.P1.DecisionTree.Walker
 open Clac3.P1.BuiltIn
-open Clac3.P1.DecisionTree
 
 type RewriteRuleApplication(rules: RewriteRule list, expressions: Expression list) =
     inherit Application<Walker, Expression, Expression>()

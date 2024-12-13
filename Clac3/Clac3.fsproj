@@ -14,8 +14,10 @@
     <Compile Include="P1\DomainUtil.fs" />
     <Compile Include="P1\Interpreter.fs" />
     <Compile Include="P1\TypeAnnotatedExpression.fs" />
+    <Compile Include="P1\DecisionTree\Domain.fs" />
+    <Compile Include="P1\DecisionTree\Builder.fs" />
+    <Compile Include="P1\DecisionTree\Walker.fs" />
     <Compile Include="P1\BuiltIn.fs" />
-    <Compile Include="P1\DecisionTree.fs" />
     <Compile Include="P1\Application.fs" />
     <Compile Include="P2\FExpression.fs" />
     <Compile Include="P2\Function.fs" />

@@ -3,7 +3,7 @@
 open Clac3.DomainUtil
 open Clac3.P1.Expression
 open Clac3.P1.DomainUtil
-open Clac3.P1.Domain
+open Clac3.P1.RewriteRule
 
 // NOTE: rules should be defined so that all the defined values come first - like in the if-then-else rule
 //  the expressions are evaluated depth first from left to right

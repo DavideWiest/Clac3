@@ -1,4 +1,4 @@
-﻿module Clac3.P1.Domain
+﻿module Clac3.P1.RewriteRule
 
 open Clac3.P1.Expression
 

@@ -2,7 +2,7 @@
 
 open Clac3.DomainUtil
 open Clac3.P1.Expression
-open Clac3.P1.Domain
+open Clac3.P1.RewriteRule
 
 module rec ToString =
     let atom = function

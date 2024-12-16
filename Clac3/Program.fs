@@ -1,7 +1,9 @@
 ﻿
-open Clac3.Application
-open Clac3.FExpression
+open Clac3.Expression
+open Clac3.FunctionalExpression
+open Clac3.Type
 open Clac3.Function
+open Clac3.Application
 open Clac3.P2.Application
 open Clac3.P2.DomainUtil
 open Clac3.Testing.Testing
@@ -9,20 +11,24 @@ open Clac3.Data
 
 let factorialFn = {
     ident = "fibonacci";
-    lambda = Custom (
+    signature = {
+        args = [TInteger];
+        returnType = TInteger
+    };
+    binding = Custom (
         [|"x"|],
-        FBranch (
-            FCall ("intEquals", [|FCall("x", [||]); FAtom(FInteger 0)|]),
-            FAtom (FFloat 0.0),
-            FBranch (
-                FCall ("intEquals", [|FCall("x", [||]); FAtom(FInteger 1)|]),
-                FAtom (FFloat 1.0),
-                FCall ("addFloats", [|
-                    FCall ("fibonacci", [|
-                        FCall ("subInts", [|FCall("x", [||]); FAtom(FInteger 1)|])
+        toBranch (
+            toFCall ("intEquals", [|toFCall("x", [||]); FAtom(Integer 0)|]),
+            FAtom (Float 0.0),
+            toBranch (
+                toFCall ("intEquals", [|toFCall("x", [||]); FAtom(Integer 1)|]),
+                FAtom (Float 1.0),
+                toFCall ("addFloats", [|
+                    toFCall ("fibonacci", [|
+                        toFCall ("subInts", [|toFCall("x", [||]); FAtom(Integer 1)|])
                     |])
-                    FCall ("fibonacci", [|
-                        FCall ("subInts", [|FCall("x", [||]); FAtom(FInteger 2)|])
+                    toFCall ("fibonacci", [|
+                        toFCall ("subInts", [|toFCall("x", [||]); FAtom(Integer 2)|])
                     |])
                 |])
             )
@@ -32,20 +38,24 @@ let factorialFn = {
 
 let factorialFnFloat = {
     ident = "fibonacciFloat";
-    lambda = Custom (
+    signature = {
+        args = [TFloat];
+        returnType = TFloat
+    };
+    binding = Custom (
         [|"x"|],
-        FBranch (
-            FCall ("floatEquals", [|FCall("x", [||]); FAtom(FFloat 0.0)|]),
-            FAtom (FFloat 0.0),
-            FBranch (
-                FCall ("floatEquals", [|FCall("x", [||]); FAtom(FFloat 1.0)|]),
-                FAtom (FFloat 1.0),
-                FCall ("addFloats", [|
-                    FCall ("fibonacciFloat", [|
-                        FCall ("subFloats", [|FCall("x", [||]); FAtom(FFloat 1.0)|])
+        toBranch (
+            toFCall ("floatEquals", [|toFCall("x", [||]); FAtom(Float 0.0)|]),
+            FAtom (Float 0.0),
+            toBranch (
+                toFCall ("floatEquals", [|toFCall("x", [||]); FAtom(Float 1.0)|]),
+                FAtom (Float 1.0),
+                toFCall ("addFloats", [|
+                    toFCall ("fibonacciFloat", [|
+                        toFCall ("subFloats", [|toFCall("x", [||]); FAtom(Float 1.0)|])
                     |])
-                    FCall ("fibonacciFloat", [|
-                        FCall ("subFloats", [|FCall("x", [||]); FAtom(FFloat 2.0)|])
+                    toFCall ("fibonacciFloat", [|
+                        toFCall ("subFloats", [|toFCall("x", [||]); FAtom(Float 2.0)|])
                     |])
                 |])
             )
@@ -54,11 +64,11 @@ let factorialFnFloat = {
 }
 
 let appFunc = ExtendedFunctionalApplication([|factorialFn|],
-    [|FCall ("fibonacci", [|faInt 25|])|]
+    [|toFCall ("fibonacci", [|faInt 25|])|]
 )
 
 let appFunc2 = ExtendedFunctionalApplication([|factorialFnFloat|],
-    [|FCall ("fibonacciFloat", [|faFl 25|])|]
+    [|toFCall ("fibonacciFloat", [|faFl 25|])|]
 )
 
 let measureApp (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) = 

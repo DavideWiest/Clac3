@@ -1,6 +1,5 @@
 ﻿module Clac3.P1.BuiltIn
 
-open Clac3.DomainUtil
 open Clac3.Expression
 open Clac3.P1.DomainUtil
 open Clac3.P1.RewriteRule
@@ -40,12 +39,16 @@ module Helper =
         )
 
 // DENESTING
-let denestingRules = [
-    {
-        pattern = NC [Any]
-        replacer = (Args.one (fun item -> item))
-    }
-]
+let denestingRule = {
+    pattern = NC [Any]
+    replacer = (Args.one (fun item -> item))
+}
+
+// flatten the node, so that the first item is always the identifier
+let flattenRule = {
+    pattern = NCC [pNo]
+    replacer = Args.two (fun a rest -> Node (Args.getChildren(a)@Args.getChildren(rest)))
+}
 
 // CONTROL FLOW
 let controlFlowRules = [
@@ -53,6 +56,7 @@ let controlFlowRules = [
         pattern = NC [vKw "if"; pBo; vKw "then"; Any; vKw "else"; Any]
         replacer = Args.three (fun cond thenExpr elseExpr -> Node [aKw "ifthenelse"; cond; thenExpr; elseExpr])
     }
+    // TODO: match
 ]
 
 // LOGIC
@@ -98,18 +102,17 @@ let arithmeticRules =
     |> List.append [{ pattern = NCC [pFl; vKw "*"; pBo]; replacer = Args.two (fun i b -> Node [aKw "ifthenelse"; b; i; aFl 0]) }]
 
 // LISTS
-let listRules = 
-    [
-        {
-            pattern = NCC [pLi; vKw "+"]
-            replacer = Args.two (fun l rest -> Node [aKw "List.append"; l; rest])
-        }
-        {
-            pattern = NC [pLi; vKw "map"; pNo]
-            replacer = Args.two (fun listExpr mapExpr -> Node [aKw "List.map"; listExpr; mapExpr])
-        }
-        // TODO: cons operator, concat, filter, fold, reduce, zip
-    ]
+let listRules = [
+    {
+        pattern = NCC [pLi; vKw "+"]
+        replacer = Args.two (fun l rest -> Node [aKw "List.append"; l; rest])
+    }
+    {
+        pattern = NC [pLi; vKw "map"; pNo]
+        replacer = Args.two (fun listExpr mapExpr -> Node [aKw "List.map"; listExpr; mapExpr])
+    }
+    // TODO: cons operator, concat, filter, fold, reduce, zip
+]
 
 // STRINGS
 let stringRules = [
@@ -129,5 +132,7 @@ let functionalCompositionRules = [
 ]
 
 let coreRuleSet =
-    denestingRules @ controlFlowRules @ equalityRules @ booleanRules @ arithmeticRules @ listRules @ stringRules @ functionalCompositionRules
+    // denestingRule first, as it's the most likely to be applied
+    // flattenRule last so that all other rules (of the same pattern) are applied first
+    denestingRule::controlFlowRules @ equalityRules @ booleanRules @ arithmeticRules @ listRules @ stringRules @ functionalCompositionRules @ [flattenRule] 
     

@@ -1,6 +1,6 @@
 ﻿module Clac3.P2.Normalizer
 
-open Clac3.FExpression
+open Clac3.FunctionalExpression
 open Clac3.Function
 
 module Expression = 
@@ -34,7 +34,7 @@ module Bindings =
                     | BuiltIn fn -> S2.FunctionBody.BuiltIn fn
                     | Custom (argIdents, body) -> S2.FunctionBody.Custom(argIdents |> Array.map (fun ident -> bindingIdentMap[ident]), body |> Expression.switchBindingIdentOne bindingIdentMap)
                 
-                newBindingStore.[bindingIdentMap[ident]] <- Some (S2.Binding.BFuncDef { ident = bindingIdentMap[ident]; lambda = newFn })
+                newBindingStore.[bindingIdentMap[ident]] <- Some (S2.Binding.BFuncDef { ident = bindingIdentMap[ident]; signature=fn.signature; lambda = newFn })
 
         )
 

@@ -2,7 +2,6 @@
 
 open Clac3.Util
 open Clac3.Expression
-open Clac3.TypeAnnotatedExpression
 open Clac3.P1.DecisionTree.Domain
 
 // Atoms
@@ -33,15 +32,15 @@ let private walkAtom atom (pattern: PatternWrapper<AtomDecisionTree>) =
     |> Option.orElse (Option.tupleWithRev pattern.any [Atom atom])
 
 // Lists and Nodes
-let private tryGetNodeTreeResultInner wrapperType (children: TypeAnnotatedExpression list) (flp: FirstLevelPattern, next: NodeDecisionTree) =
+let private tryGetNodeTreeResultInner wrapperType (children: Expression list) (flp: FirstLevelPattern, next: NodeDecisionTree) =
     walk flp children.Head
     |> Option.bind (fun (_, args) -> 
         children.Tail 
         |> walkNodeInner wrapperType next 
-        |> Option.map (fun (replacer, argsTail) -> replacer, (args @ argsTail))
+        |> Option.map (fun (replacer, argsTail) -> replacer, args@argsTail)
     )
 
-let private walkNodeInner wrapperType pattern (children: TypeAnnotatedExpression list) = 
+let private walkNodeInner wrapperType pattern (children: Expression list) = 
     // this order is crucial
     // anything that could cut of another pattern should be check later than that one
     // continuing rules first -- then ending rules -- then rest/collector rules
@@ -49,17 +48,16 @@ let private walkNodeInner wrapperType pattern (children: TypeAnnotatedExpression
     |> Option.orElse (if children.Length = 1 then pattern.ending |> Option.bind (fun pattern -> walk pattern children.Head) else None)
     |> Option.orElse (if children.Length > 0 then pattern.rest |> Option.map (fun replacer -> replacer, [Node children]) else None)
 
-let private walkNode wrapperType (children: TypeAnnotatedExpression list) (pattern: CollectablePatternWrapper<NodeDecisionTree>) = 
+let private walkNode wrapperType (children: Expression list) (pattern: CollectablePatternWrapper<NodeDecisionTree>) = 
     children |> walkNodeInner wrapperType pattern.value |> Option.orElse (Option.tupleWithRev pattern.any [wrapperType children])
         
 // Expressions
 let private walkExpression tree = function
-    | TAAtom (t,a) -> tree.atom |> Option.bind (walkAtom a)
-    | TANode (t,children) -> tree.node |> Option.bind (walkNode TANode children)
-    | TAList (t,children)-> tree.list |> Option.bind (walkNode TAList children)
+    | Atom a -> tree.atom |> Option.bind (walkAtom a)
+    | Node children -> tree.node |> Option.bind (walkNode Node children)
 
 // First level
-let walk (tree: FirstLevelPattern) (expr: TypeAnnotatedExpression) = 
+let walk (tree: FirstLevelPattern) (expr: Expression) = 
     tree.value |> Option.bind (fun v -> walkExpression v expr) |> Option.orElse (Option.tupleWithRev tree.any [expr])
 
 type Walker(tree: FirstLevelPattern) = 

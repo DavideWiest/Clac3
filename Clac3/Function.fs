@@ -1,31 +1,29 @@
 ﻿module Clac3.Function
 
-open Clac3.FExpression
-open Clac3.TypeAnnotatedExpression
+open Clac3.Expression
+open Clac3.FunctionalExpression
+open Clac3.Type
 
-type FunctionBody<'a, 'b> = 
-    | BuiltIn of (FAtom array -> FAtom) 
+type BindingValue<'a, 'b> = 
+    | BValue of Atom
+    | BuiltIn of ('b array -> 'b) // can't be atom because array (or any recursive types) can't be atoms
     | Custom of ('a array) * 'b
 
-type FunctionDefinition<'a, 'b> = {
+type Binding<'a, 'b> = {
     ident: 'a
-    signature: Type list * Type
-    lambda: FunctionBody<'a, 'b>
+    signature: FnSignature
+    binding: BindingValue<'a, 'b>
 }
 
-type Binding<'a, 'b> = 
-    | BValue of FAtom
-    | BFuncDef of FunctionDefinition<'a, 'b>
+type BuiltInBinding = BindingValue<string, S2.FExpression>
 
 module S1 =
-    type FunctionBody = FunctionBody<string, S1.FExpression>
-    type FunctionDefinition = FunctionDefinition<string, S1.FExpression>
+    type BindingValue = BindingValue<string, S1.FExpression>
     type Binding = Binding<string, S1.FExpression>
-    type BindingStore = Map<string, Binding<string, S1.FExpression>>
+    type BindingStore = Map<string, BindingValue<string, S1.FExpression>>
 
 module S2 =
-    type FunctionBody = FunctionBody<int, S2.FExpression>
-    type FunctionDefinition = FunctionDefinition<int, S2.FExpression>
+    type BindingValue = BindingValue<int, S2.FExpression>
     type Binding = Binding<int, S2.FExpression>
-    type BindingStore = Binding<int, S2.FExpression> option array
+    type BindingStore = BindingValue<int, S2.FExpression> option array
  

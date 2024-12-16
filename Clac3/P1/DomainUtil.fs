@@ -15,11 +15,11 @@ module rec ToString =
 
     let expressionInner = function
         | Atom a -> atom a
-        | List l -> l |> List.map expression |> String.concat ", " |> ToString.inSquareParans
+        | Array l -> l |> Array.map expression |> String.concat ", " |> ToString.inBrackets
         | Node children -> children |> node |> ToString.inParans
 
     let expression = function
-        | List l-> l |> List.map expression |> String.concat ", " |> ToString.inSquareParans
+        | Array l-> l |> Array.map expression |> String.concat ", " |> ToString.inBrackets
         | Node children -> node children
         | expr -> expressionInner expr
 
@@ -43,11 +43,11 @@ let pStr = Any |> PString |> vAtom |> Value
 let pVar = Any |> PVariable |> vAtom |> Value
 let pKw = Any |> PKeyword |> vAtom |> Value
 
-let pLi = Any |> PList |> Value
+let pLi = Any |> PArray |> Value
 let pNo = Any |> PNode |> Value
 
 // List/node containing
-let LC = (List.map CValue) >> Value >> PList >> Value
+let LC = (List.map CValue) >> Value >> PArray >> Value
 let NC = (List.map CValue) >> Value >> PNode >> Value
 
 // list/node containing with collector
@@ -62,7 +62,7 @@ let aStr = String >> Atom
 let aVar = Variable >> Atom
 let aKw = Keyword >> Atom
 
-let aLi = List
+let aLi = Array
 let aNo = Node
 
 module Args =

@@ -1,6 +1,7 @@
 ﻿module Clac3.P1.RewriteRule
 
 open Clac3.Expression
+open Clac3.Type
 
 // Patterns
 
@@ -13,13 +14,14 @@ type AtomPattern =
     | PInteger of PatternUnion<int>
     | PFloat of PatternUnion<float>
     | PString of PatternUnion<string>
+
     | PVariable of PatternUnion<string>
     | PKeyword of PatternUnion<string>
 
 type ExpressionPattern =
     | PAtom of PatternUnion<AtomPattern>
-    | PList of PatternUnion<CollectablePattern list>
     | PNode of PatternUnion<CollectablePattern list>
+    | PArray of PatternUnion<CollectablePattern list>
 
 and Pattern = PatternUnion<ExpressionPattern>
 and CollectablePattern =

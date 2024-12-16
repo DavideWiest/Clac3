@@ -28,20 +28,21 @@ let private buildPatternMap (values: (PatternUnion<'a> * Replacer) list) : Patte
     let valueRules, anyRule = separateAnyFromValueBased "atom" values
     { value = valueRules; any = anyRule }
 
+// TODO: use resizeArray
 let private partitionAtoms (rules: (AtomPattern * Replacer) list) =
     rules
-    |> List.fold (fun (boolRules, intRules, floatRules, strRules, varRules, kwRules) (pattern, replacer) -> 
+    |> List.fold (fun (boolRules, intRules, floatRules, strRules, arrRules, varRules, kwRules) (pattern, replacer) -> 
         match pattern with
-        | PBool p -> (p, replacer)::boolRules, intRules, floatRules, strRules, varRules, kwRules
-        | PInteger p -> boolRules, (p, replacer)::intRules, floatRules, strRules, varRules, kwRules
-        | PFloat p -> boolRules, intRules, (p, replacer)::floatRules, strRules, varRules, kwRules
-        | PString p -> boolRules, intRules, floatRules, (p, replacer)::strRules, varRules, kwRules
-        | PVariable p -> boolRules, intRules, floatRules, strRules, (p, replacer)::varRules, kwRules
-        | PKeyword p -> boolRules, intRules, floatRules, strRules, varRules, (p, replacer)::kwRules
-    ) ([], [], [], [], [], [])
+        | PBool p -> (p, replacer)::boolRules, intRules, floatRules, strRules, arrRules, varRules, kwRules
+        | PInteger p -> boolRules, (p, replacer)::intRules, floatRules, strRules, arrRules, varRules, kwRules
+        | PFloat p -> boolRules, intRules, (p, replacer)::floatRules, strRules, arrRules, varRules, kwRules
+        | PString p -> boolRules, intRules, floatRules, (p, replacer)::strRules, arrRules, varRules, kwRules
+        | PVariable p -> boolRules, intRules, floatRules, strRules, arrRules, (p, replacer)::varRules, kwRules
+        | PKeyword p -> boolRules, intRules, floatRules, strRules, arrRules, varRules, (p, replacer)::kwRules
+    ) ([], [], [], [], [], [], [])
         
 let private buildAtomInner (rules: (AtomPattern * Replacer) list) : AtomDecisionTree =
-    let boolRules, intRules, floatRules, strRules, varRules, kwRules = partitionAtoms rules
+    let boolRules, intRules, floatRules, strRules, arrRules, varRules, kwRules = partitionAtoms rules
 
     { 
         bool = ifEmptyNoneElseApply buildPatternMap boolRules
@@ -113,8 +114,8 @@ let private partitionToExpressionTypes (rules: (ExpressionPattern * Replacer) li
     |> List.fold (fun (atomRuleSets, nodeRuleSets, listRuleSets) (pattern, replacer) ->
         match pattern with
         | PAtom leaf -> (leaf, replacer)::atomRuleSets, nodeRuleSets, listRuleSets
+        | PArray arr -> atomRuleSets, nodeRuleSets, (arr, replacer)::listRuleSets
         | PNode children -> atomRuleSets, (children, replacer)::nodeRuleSets, listRuleSets
-        | PList children -> atomRuleSets, nodeRuleSets, (children, replacer)::listRuleSets
     ) ([], [], [])
 
 let private buildExpression (rules: (ExpressionPattern * Replacer) list) : ExpressionDecisionTree =

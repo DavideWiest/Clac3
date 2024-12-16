@@ -10,10 +10,10 @@
     <Compile Include="DomainUtil.fs" />
     <Compile Include="Application.fs" />
     <Compile Include="Expression.fs" />
-    <Compile Include="TypeAnnotatedExpression.fs" />
-    <Compile Include="FExpression.fs" />
+    <Compile Include="Type.fs" />
+    <Compile Include="FunctionalExpression.fs" />
     <Compile Include="Function.fs" />
-    <Compile Include="P1\RewriteRule.fs" />
+    <Compile Include="P1\Pattern.fs" />
     <Compile Include="P1\DomainUtil.fs" />
     <Compile Include="P1\Interpreter.fs" />
     <Compile Include="P1\DecisionTree\Domain.fs" />

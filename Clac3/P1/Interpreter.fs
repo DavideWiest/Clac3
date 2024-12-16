@@ -1,5 +1,6 @@
-﻿module Clac3.P1.SubstitutionInterpreter
+﻿module Clac3.P1.Interpreter
 
+open Clac3.Constants
 open Clac3.Expression
 open Clac3.Type
 open Clac3.FunctionalExpression
@@ -16,7 +17,7 @@ let rec typeAnnotateAtom a =
 
 let rec inferAndValidateType (bindingStore: S1.BindingStore) (children: TAExpression list) : Type =
     match children with
-    | [] -> Unit
+    | [] -> TUnit
     | head::args ->
         match head with
         | { eType=TFunc _; expr=_ } -> failwith "todo"
@@ -26,7 +27,7 @@ let rec inferAndValidateType (bindingStore: S1.BindingStore) (children: TAExpres
             | Some (binding) ->
                 let argTypes = args |> List.map (fun a -> a.eType)
 
-                List.zip binding.signature.args.[..argTypes.Length - 2] argTypes 
+                List.zip binding.signature.args.[..argTypes.Length - 1] argTypes 
                 |> List.iter (fun (tExpected, tActual) -> 
                     if tExpected <> tActual then failwithf "Expected type %A, got %A when calling %A" tExpected tActual fnName
                 )
@@ -45,15 +46,15 @@ let rec inferAndValidateType (bindingStore: S1.BindingStore) (children: TAExpres
 let rec evalExprInner (bindingStore: S1.BindingStore) (tryReplace: Expression -> Expression option) expr : TAExpression =
     match expr with
     | Atom a -> tryReplace (Atom a) |> Option.map (evalExprInner bindingStore tryReplace) |> Option.defaultValue ({ expr=Atom a; eType=typeAnnotateAtom a })
-    | Array arr -> 
-        let arr' = arr |> Array.map (evalExprInner bindingStore tryReplace)
+    | Array arrRaw -> 
+        let arr = arrRaw |> Array.map (evalExprInner bindingStore tryReplace)
 
-        let types = arr' |> Array.map (fun a -> a.eType)
-        let items = arr' |> Array.map (fun a -> a.expr)
+        let types = arr |> Array.map (fun a -> a.eType)
+        let items = arr |> Array.map (fun a -> a.expr)
 
-        if (types |> Array.distinct |> Array.length) > 1 then failwithf "Array elements must have the same type. Array: %A" arr'
+        if (types |> Array.distinct |> Array.length) > 1 then failwithf "Array elements must have the same type. Array: %A" arr
 
-        { expr=Array items; eType=TArray arr'[0].eType }
+        { expr=Array items; eType=TArray arr[0].eType }
     | Node children ->
         let children' = children |> List.map (evalExprInner bindingStore tryReplace)
         let childrenWithoutTypes = children' |> List.map (fun c -> c.expr)
@@ -68,18 +69,31 @@ let rec evalExprInner (bindingStore: S1.BindingStore) (tryReplace: Expression ->
         else { expr=Node childrenWithoutTypes; eType=inferAndValidateType bindingStore children'}
             
 let rec toFunctionalExpression = function
-    | Atom a -> FAtom a
+    | Atom a ->
+        match a with
+        | Bool b -> b |> FBool |> FAtom
+        | Integer i -> i |> FInteger |> FAtom
+        | Float f -> f |> FFloat |> FAtom
+        | String s -> s |> FString |> FAtom
+        | Variable v -> FRef { ident=v; args=[||] }
+        | Keyword k -> failwith "Tried to convert a Expr to FExpr. Keywords should not be present within functional expressions."
     | Array arr -> FArray (arr |> Array.map toFunctionalExpression)
     | Node children -> 
         match children with
-        | [] -> failwith "Empty expression list"
+        | [] -> FUnit
         | head::tail ->
             match head with
-            | Atom (Keyword fnName) -> FCall { ident=fnName; args=tail |> List.map toFunctionalExpression |> Array.ofList }
+            | Atom (Keyword fnName) -> 
+                if fnName = branchIdent then
+                    match tail with
+                    | [cond; trueB; falseB] -> FBranch { cond=toFunctionalExpression cond; trueB=toFunctionalExpression trueB; falseB=toFunctionalExpression falseB }
+                    | _ -> failwithf "Expected 3 arguments for ifthenelse, got: %A" tail
+                else
+                    FRef { ident=fnName; args=tail |> List.map toFunctionalExpression |> Array.ofList }
             | _ -> failwithf "Expected keyword, got: %A. Full expression: %A" head (Node children)
 
 let toFunctionalExpressionForTopLevel (expectedOutputType: Type option) (taExpr: TAExpression) = 
     if expectedOutputType.IsSome && taExpr.eType <> expectedOutputType.Value then failwithf "Expected type %A, got %A" expectedOutputType taExpr.eType
     toFunctionalExpression taExpr.expr
 
-let evalExpr tryReplace bindingStore expectedOutputType = evalExprInner bindingStore tryReplace >> toFunctionalExpressionForTopLevel expectedOutputType
+let evalExpr bindingStore tryReplace expectedOutputType = evalExprInner bindingStore tryReplace >> toFunctionalExpressionForTopLevel expectedOutputType

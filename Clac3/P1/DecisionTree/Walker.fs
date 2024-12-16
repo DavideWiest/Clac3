@@ -2,6 +2,7 @@
 
 open Clac3.Util
 open Clac3.Expression
+open Clac3.P1.Domain
 open Clac3.P1.DecisionTree.Domain
 
 // Atoms
@@ -54,6 +55,7 @@ let private walkNode wrapperType (children: Expression list) (pattern: Collectab
 // Expressions
 let private walkExpression tree = function
     | Atom a -> tree.atom |> Option.bind (walkAtom a)
+    | Array children -> tree.list |> Option.bind (walkNode (Array.ofList >> Array) (children |> List.ofArray)) // TODO: this sucks really bad
     | Node children -> tree.node |> Option.bind (walkNode Node children)
 
 // First level

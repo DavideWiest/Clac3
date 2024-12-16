@@ -1,6 +1,6 @@
 ﻿module Clac3.P1.DomainUtil
 
-open Clac3.DomainUtil
+open Clac3.Util
 open Clac3.Expression
 open Clac3.P1.RewriteRule
 
@@ -67,7 +67,7 @@ let aNo = Node
 
 module Args =
     let zero v _ = v
-    let one matcher (args: Expression list) = matcher args[0]
+    let one matcher (args: Expression list) : Expression = matcher args[0]
     let two matcher (args: Expression list) = matcher args[0] args[1]
     let three matcher (args: Expression list) = matcher args[0] args[1] args[2]
     let four matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3]

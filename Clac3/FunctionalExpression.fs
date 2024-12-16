@@ -1,8 +1,12 @@
 ﻿module Clac3.FunctionalExpression
 
-open Clac3.Expression
+type FAtom = 
+    | FBool of bool
+    | FInteger of int
+    | FFloat of float
+    | FString of string
 
-type FunctionCall<'a> = {
+type Reference<'a> = {
     ident: 'a
     args: FExpression<'a> array
 }
@@ -14,15 +18,16 @@ and Branch<'a> = {
 }
 
 and FExpression<'a> =
-    | FAtom of Atom
+    | FAtom of FAtom
     | FArray of FExpression<'a> array
-    | FCall of FunctionCall<'a>
+    | FRef of Reference<'a>
     | FBranch of Branch<'a>
+    | FUnit
    
 module S1 =
-    type FunctionCall = FunctionCall<string>
+    type Reference = Reference<string>
     type FExpression = FExpression<string>
     
 module S2 =
-    type FunctionCall = FunctionCall<int>
+    type Reference = Reference<int>
     type FExpression = FExpression<int>

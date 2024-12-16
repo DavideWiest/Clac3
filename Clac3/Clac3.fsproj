@@ -7,12 +7,13 @@
 
   <ItemGroup>
     <Compile Include="Util.fs" />
-    <Compile Include="DomainUtil.fs" />
+    <Compile Include="Constants.fs" />
     <Compile Include="Application.fs" />
     <Compile Include="Expression.fs" />
     <Compile Include="Type.fs" />
     <Compile Include="FunctionalExpression.fs" />
     <Compile Include="Function.fs" />
+    <Compile Include="P1\Domain.fs" />
     <Compile Include="P1\Pattern.fs" />
     <Compile Include="P1\DomainUtil.fs" />
     <Compile Include="P1\Interpreter.fs" />
@@ -26,7 +27,7 @@
     <Compile Include="P2\Normalizer.fs" />
     <Compile Include="P2\BuiltIn.fs" />
     <Compile Include="P2\Application.fs" />
-    <Compile Include="Testing\Testing.fs" />
+    <Compile Include="ClacApplication.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

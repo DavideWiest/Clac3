@@ -1,75 +1,72 @@
 ﻿
-open Clac3.Expression
-open Clac3.FunctionalExpression
 open Clac3.Type
-open Clac3.Function
 open Clac3.Application
+open Clac3.Expression
+open Clac3.P1.DomainUtil
 open Clac3.P2.Application
 open Clac3.P2.DomainUtil
-open Clac3.Testing.Testing
+open Clac3.ClacApplication
 open Clac3.Data
 
-let factorialFn = {
-    ident = "fibonacci";
-    signature = {
-        args = [TInteger];
-        returnType = TInteger
-    };
-    binding = Custom (
-        [|"x"|],
+let fibFn = toBinding ("fib", [TInteger; TInteger],
+    toCustomFn (
+        ["x"],
         toBranch (
-            toFCall ("intEquals", [|toFCall("x", [||]); FAtom(Integer 0)|]),
-            FAtom (Float 0.0),
+            toReference ("eqInt", [|toValueReference "x"; faInt 0|]),
+            faInt 0,
             toBranch (
-                toFCall ("intEquals", [|toFCall("x", [||]); FAtom(Integer 1)|]),
-                FAtom (Float 1.0),
-                toFCall ("addFloats", [|
-                    toFCall ("fibonacci", [|
-                        toFCall ("subInts", [|toFCall("x", [||]); FAtom(Integer 1)|])
+                toReference ("eqInt", [|toValueReference "x"; faInt 1|]),
+                faInt 1,
+                toReference ("addInt", [|
+                    toReference ("fibonacci", [|
+                        toReference ("subtractInt", [|toValueReference "x"; faInt 1|])
                     |])
-                    toFCall ("fibonacci", [|
-                        toFCall ("subInts", [|toFCall("x", [||]); FAtom(Integer 2)|])
+                    toReference ("fibonacci", [|
+                        toReference ("subtractInt", [|toValueReference "x"; faInt 2|])
                     |])
                 |])
             )
         )
     )
-}
+)
 
-let factorialFnFloat = {
-    ident = "fibonacciFloat";
-    signature = {
-        args = [TFloat];
-        returnType = TFloat
-    };
-    binding = Custom (
-        [|"x"|],
+let fibFnFloat = toBinding("fibFloat", [TFloat; TFloat],
+    toCustomFn (
+        ["x"],
         toBranch (
-            toFCall ("floatEquals", [|toFCall("x", [||]); FAtom(Float 0.0)|]),
-            FAtom (Float 0.0),
+            toReference ("eqFloat", [|toValueReference "x"; faFl 0.0|]),
+            faFl 0.0,
             toBranch (
-                toFCall ("floatEquals", [|toFCall("x", [||]); FAtom(Float 1.0)|]),
-                FAtom (Float 1.0),
-                toFCall ("addFloats", [|
-                    toFCall ("fibonacciFloat", [|
-                        toFCall ("subFloats", [|toFCall("x", [||]); FAtom(Float 1.0)|])
+                toReference ("eqFloat", [|toValueReference "x"; faFl 1.0|]),
+                faFl 1.0,
+                toReference ("addFloat", [|
+                    toReference ("fibonacciFloat", [|
+                        toReference ("subtractFloat", [|toValueReference "x"; faFl 1.0|])
                     |])
-                    toFCall ("fibonacciFloat", [|
-                        toFCall ("subFloats", [|toFCall("x", [||]); FAtom(Float 2.0)|])
+                    toReference ("fibonacciFloat", [|
+                        toReference ("subtractFloat", [|toValueReference "x"; faFl 2.0|])
                     |])
                 |])
             )
         )
     )
-}
-
-let appFunc = ExtendedFunctionalApplication([|factorialFn|],
-    [|toFCall ("fibonacci", [|faInt 25|])|]
 )
 
-let appFunc2 = ExtendedFunctionalApplication([|factorialFnFloat|],
-    [|toFCall ("fibonacciFloat", [|faFl 25|])|]
+
+let appFunc = ExtendedFunctionalApplication([|fibFn|],
+    [|toReference ("fib", [|faInt 25|])|]
 )
+
+let appFunc2 = ExtendedFunctionalApplication([|fibFnFloat|],
+    [|toReference ("fibFloat", [|faFl 25|])|]
+)
+
+let clacApp = ExtendedClacApplication(
+    [],
+    [|fibFn|],
+    [Node [aKw "fib"; aInt 25]]
+)
+
 
 let measureApp (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) = 
     let args = app.getEvalArgs
@@ -86,4 +83,4 @@ let measureAppRepeatedly n (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) 
 //measureAppRepeatedly 20 appFunc P2ToString.atom
 //measureAppRepeatedly 100 appFunc2 P2ToString.atom
 
-runTestsPhase1 ()
+measureApp clacApp (sprintf "%A")

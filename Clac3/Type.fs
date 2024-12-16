@@ -19,7 +19,7 @@ and Type =
 
     | TFunc of FnSignature
 
-    | Unit
+    | TUnit
 
 type TAExpression = {
     expr: Expression

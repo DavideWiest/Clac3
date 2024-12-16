@@ -10,4 +10,4 @@ type Application<'a, 'b, 'c>() =
     abstract member eval : args: 'a -> 'c seq
     abstract member getEvalArgs : 'a
 
-    member this.runProgram = this.getEvalArgs |> this.eval
+    member this.runProgram () = this.getEvalArgs |> this.eval

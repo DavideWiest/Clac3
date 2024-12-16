@@ -7,11 +7,11 @@ type Atom =
     | Float of float
     | String of string
 
-
     | Variable of string
     | Keyword of string
 
-and Expression =
+// the unit type is not included because it's represented by an empty node
+type Expression =
     | Atom of Atom
     | Array of Expression array
     | Node of Expression list

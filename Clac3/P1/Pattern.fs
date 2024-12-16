@@ -1,7 +1,6 @@
 ﻿module Clac3.P1.RewriteRule
 
 open Clac3.Expression
-open Clac3.Type
 
 // Patterns
 

@@ -20,32 +20,47 @@ module Funcs =
         let div = P2Args.two(fun a b -> P2Args.getFloat(a) / P2Args.getFloat(b))
 
     module Eq =
+        let bools = P2Args.two(fun a b -> P2Args.getBool(a) = P2Args.getBool(b))
         let ints = P2Args.two(fun a b -> P2Args.getInt(a) = P2Args.getInt(b))
         let floats = P2Args.two(fun a b -> P2Args.getFloat(a) = P2Args.getFloat(b))
 
+    module Boolean = 
+        let and_ = P2Args.two(fun a b -> P2Args.getBool(a) && P2Args.getBool(b))
+        let or_ = P2Args.two(fun a b -> P2Args.getBool(a) || P2Args.getBool(b))
+        let not_ = P2Args.one(fun a -> not (P2Args.getBool(a)))
+
 let intFuncs = 
     [|
-        ("addInts", Funcs.Ints.add)
-        ("subInts", Funcs.Ints.sub)
-        ("mulInts", Funcs.Ints.mul)
-        ("divInts", Funcs.Ints.div)
+        ("addInt", Funcs.Ints.add)
+        ("subtractInt", Funcs.Ints.sub)
+        ("multilyInt", Funcs.Ints.mul)
+        ("divideInt", Funcs.Ints.div)
     |]
-    |> Array.map (fun (name, body) -> { ident = name; binding = BuiltIn (body >> Integer >> FAtom); signature = { args = [TInteger; TInteger]; returnType=TInteger } })
+    |> Array.map (fun (name, body) -> { ident = name; binding = BuiltIn (body >> FInteger >> FAtom); signature = { args = [TInteger; TInteger]; returnType=TInteger } })
 
 let floatFuncs = 
     [|
-        ("addFloats", Funcs.Floats.add)
-        ("subFloats", Funcs.Floats.sub)
-        ("mulFloats", Funcs.Floats.mul)
-        ("divFloats", Funcs.Floats.div)
+        ("addFloat", Funcs.Floats.add)
+        ("subtractFloat", Funcs.Floats.sub)
+        ("multilyFloat", Funcs.Floats.mul)
+        ("divideFloat", Funcs.Floats.div)
     |]
-    |> Array.map (fun (name, body) -> { ident = name; binding = BuiltIn (body >> Float >> FAtom); signature = { args = [TFloat; TFloat]; returnType=TFloat } })
+    |> Array.map (fun (name, body) -> { ident = name; binding = BuiltIn (body >> FFloat >> FAtom); signature = { args = [TFloat; TFloat]; returnType=TFloat } })
 
 let equalityFuncs = 
     [|
-        ("intEquals", Funcs.Eq.ints, TInteger)
-        ("floatEquals", Funcs.Eq.floats, TFloat)
+        ("eqBool", Funcs.Eq.bools, TBool)
+        ("eqInt", Funcs.Eq.ints, TInteger)
+        ("eqFloat", Funcs.Eq.floats, TFloat)
     |]
-    |> Array.map (fun (name, body, argType) -> { ident = name; binding = BuiltIn (body >> Bool >> FAtom); signature = { args = [argType; argType]; returnType=TBool } })
+    |> Array.map (fun (name, body, argType) -> { ident = name; binding = BuiltIn (body >> FBool >> FAtom); signature = { args = [argType; argType]; returnType=TBool } })
+
+let boolFuncs = 
+    [|
+        ("and", Funcs.Boolean.and_, TBool)
+        ("or", Funcs.Boolean.or_, TBool)
+        ("not", Funcs.Boolean.not_, TBool)
+    |]
+    |> Array.map (fun (name, body, argType) -> { ident = name; binding = BuiltIn (body >> FBool >> FAtom); signature = { args = [argType; argType]; returnType=TBool } })
     
-let coreFunctions: S1.Binding array = Array.concat [intFuncs; floatFuncs; equalityFuncs]
+let coreBindings: S1.Binding array = Array.concat [intFuncs; floatFuncs; equalityFuncs; boolFuncs]

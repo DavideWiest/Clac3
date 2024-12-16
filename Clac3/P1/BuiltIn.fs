@@ -14,6 +14,9 @@ open Clac3.P1.RewriteRule
 
 module Helper = 
     let leafAny = [pBo; pInt; pFl; pStr; pLi] // DEPENDENCY: Atom
+    let allLeafsAnnotated = [(pBo, "Bool"); (pInt, "Int"); (pFl, "Float"); (pStr, "String"); (pLi, "List")]
+    let numbericLeafAnnotated = [(pInt, "Int"); (pFl, "Float")]
+    let booleanLeafAnnotated = [(pBo, "Bool")]
 
     let buildArithmeticRuleSetInfixOp op opInt opFloat = [
         {
@@ -38,10 +41,16 @@ module Helper =
             { pattern = NC [vKw op; a]; replacer = replacement }
         )
 
+    let buildTypeSpecificationsTwoArgs ident patternsWithStringAnnotations = 
+        patternsWithStringAnnotations
+        |> List.map (fun (p,typeAnnotation) -> 
+            { pattern = NC [vKw ident; p; p]; replacer = Args.two(fun a b -> Node [aKw (ident + typeAnnotation); a; b]) }
+        )
+
 // DENESTING
 let denestingRule = {
     pattern = NC [Any]
-    replacer = (Args.one (fun item -> item))
+    replacer = Args.one (fun item -> item)
 }
 
 // flatten the node, so that the first item is always the identifier
@@ -131,8 +140,18 @@ let functionalCompositionRules = [
     // TODO: pipeBackward, compose, flip, lambda syntax
 ]
 
-let coreRuleSet =
+let typeSpecificationRules = 
+    Helper.buildTypeSpecificationsTwoArgs "eq" Helper.allLeafsAnnotated @
+
+    Helper.buildTypeSpecificationsTwoArgs "add" Helper.numbericLeafAnnotated @
+    Helper.buildTypeSpecificationsTwoArgs "substract" Helper.numbericLeafAnnotated @
+    Helper.buildTypeSpecificationsTwoArgs "multiply" Helper.numbericLeafAnnotated @
+    Helper.buildTypeSpecificationsTwoArgs "divide" Helper.numbericLeafAnnotated
+
+let coreRules =
     // denestingRule first, as it's the most likely to be applied
     // flattenRule last so that all other rules (of the same pattern) are applied first
-    denestingRule::controlFlowRules @ equalityRules @ booleanRules @ arithmeticRules @ listRules @ stringRules @ functionalCompositionRules @ [flattenRule] 
+    denestingRule::controlFlowRules @ equalityRules @ booleanRules @ arithmeticRules @ 
+    // listRules @ stringRules @ functionalCompositionRules @
+    [flattenRule] 
     

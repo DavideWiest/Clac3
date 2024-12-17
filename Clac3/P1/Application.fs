@@ -18,9 +18,12 @@ type RewriteRuleApplication(baseBindings: S1.Binding array, rules: RewriteRule l
         let tree, bindingStore = args
         let tryReplace expr = tree.tryReplace expr
   
-        expressions 
-        |> List.map (evalExpr bindingStore tryReplace None) // no expected output type, type annotations not supported yet 
-        |> Seq.ofList
+        let evaledExprs = 
+            expressions 
+            |> List.map (evalExpr bindingStore tryReplace None) // no expected output type, type annotations not supported yet
+            |> Seq.ofList
+
+        evaledExprs |> Seq.map fst
 
     override this.getEvalArgs = 
         let bindingMap = baseBindings |> Array.map (fun b -> b.ident, b) |> Map.ofArray

@@ -78,22 +78,20 @@ let rec toFunctionalExpression = function
         | Variable v -> FRef { ident=v; args=[||] }
         | Keyword k -> failwith "Tried to convert a Expr to FExpr. Keywords should not be present within functional expressions."
     | Array arr -> FArray (arr |> Array.map toFunctionalExpression)
-    | Node children -> 
-        match children with
-        | [] -> FUnit
-        | head::tail ->
-            match head with
-            | Atom (Keyword fnName) -> 
-                if fnName = branchIdent then
-                    match tail with
-                    | [cond; trueB; falseB] -> FBranch { cond=toFunctionalExpression cond; trueB=toFunctionalExpression trueB; falseB=toFunctionalExpression falseB }
-                    | _ -> failwithf "Expected 3 arguments for ifthenelse, got: %A" tail
-                else
-                    FRef { ident=fnName; args=tail |> List.map toFunctionalExpression |> Array.ofList }
-            | _ -> failwithf "Expected keyword, got: %A. Full expression: %A" head (Node children)
+    | Node [] -> FUnit
+    | Node (head::tail) ->
+        match head with
+        | Atom (Keyword fnName) -> 
+            if fnName = branchIdent then
+                match tail with
+                | [cond; trueB; falseB] -> FBranch { cond=toFunctionalExpression cond; trueB=toFunctionalExpression trueB; falseB=toFunctionalExpression falseB }
+                | _ -> failwithf "Expected 3 arguments for %s, got: %A" branchIdent tail
+            else
+                FRef { ident=fnName; args=tail |> List.map toFunctionalExpression |> Array.ofList }
+        | _ -> failwithf "Expected keyword, got: %A. Full expression: %A" head (Node (head::tail))
 
 let toFunctionalExpressionForTopLevel (expectedOutputType: Type option) (taExpr: TAExpression) = 
     if expectedOutputType.IsSome && taExpr.eType <> expectedOutputType.Value then failwithf "Expected type %A, got %A" expectedOutputType taExpr.eType
-    toFunctionalExpression taExpr.expr
+    toFunctionalExpression taExpr.expr, (expectedOutputType |> Option.defaultValue taExpr.eType)
 
 let evalExpr bindingStore tryReplace expectedOutputType = evalExprInner bindingStore tryReplace >> toFunctionalExpressionForTopLevel expectedOutputType

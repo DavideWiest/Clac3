@@ -14,20 +14,20 @@
     <Compile Include="FunctionalExpression.fs" />
     <Compile Include="Function.fs" />
     <Compile Include="P1\Domain.fs" />
-    <Compile Include="P1\Pattern.fs" />
+    <Compile Include="P1\PatternReplacer.fs" />
     <Compile Include="P1\DomainUtil.fs" />
     <Compile Include="P1\Interpreter.fs" />
     <Compile Include="P1\DecisionTree\Domain.fs" />
     <Compile Include="P1\DecisionTree\Builder.fs" />
     <Compile Include="P1\DecisionTree\Walker.fs" />
-    <Compile Include="P1\BuiltIn.fs" />
-    <Compile Include="P1\Application.fs" />
     <Compile Include="P2\DomainUtil.fs" />
     <Compile Include="P2\Interpreter.fs" />
     <Compile Include="P2\Normalizer.fs" />
-    <Compile Include="P2\BuiltIn.fs" />
-    <Compile Include="P2\Application.fs" />
-    <Compile Include="ClacApplication.fs" />
+    <Compile Include="BuiltIn\P1\Core.fs" />
+    <Compile Include="BuiltIn\P2\Core.fs" />
+    <Compile Include="App\P1Application.fs" />
+    <Compile Include="App\P2Application.fs" />
+    <Compile Include="App\ClacApplication.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

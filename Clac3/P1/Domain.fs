@@ -2,12 +2,21 @@
 
 open Clac3.Expression
 open Clac3.Type
-open Clac3.FunctionalExpression
 
-type ProgramStatement = 
-    | Definitiion of string * (string list) * Expression
-    | Expression of Expression
+// this should be closures, and a lot more flexible. but suffices as first version
+// also, the returntype can be inferred
 
-type FunctionalProgramStatement = 
-    | FDefinitiion of string * (string list) * S1.FExpression
-    | FExpression of Type * S1.FExpression
+type RawCustomFn = {
+    argIdents: string array
+    body: Expression
+}
+
+type RawBindingValue = 
+    | RValue of Expression
+    | RCustom of RawCustomFn
+
+type RawBinding = {
+    ident: string
+    signature: FnSignature
+    body: RawBindingValue
+}

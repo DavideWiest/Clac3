@@ -1,8 +1,8 @@
-﻿module Clac3.P1.BuiltIn
+﻿module Clac3.BuiltIn.P1.Core
 
 open Clac3.Expression
 open Clac3.P1.DomainUtil
-open Clac3.P1.RewriteRule
+open Clac3.P1.PatternReplacer
 
 // NOTE: rules should be defined so that all the defined values come first - like in the if-then-else rule
 //  the expressions are evaluated depth first from left to right
@@ -63,6 +63,7 @@ let flattenRule = {
 let controlFlowRules = [
     {
         pattern = NC [vKw "if"; pBo; vKw "then"; Any; vKw "else"; Any]
+        // this should not be replaced by branchIdent, because it-then-else is too specific
         replacer = Args.three (fun cond thenExpr elseExpr -> Node [aKw "ifthenelse"; cond; thenExpr; elseExpr])
     }
     // TODO: match
@@ -107,8 +108,6 @@ let arithmeticRules =
         "**", "pow"
     ] 
     |> List.collect (fun (op, fnName) -> Helper.buildArithmeticRuleSetInfixOp op (fnName + "Int") (fnName + "Float"))
-    |> List.append [{ pattern = NCC [pInt; vKw "*"; pBo]; replacer = Args.two (fun i b -> Node [aKw "ifthenelse"; b; i; aInt 0]) }]
-    |> List.append [{ pattern = NCC [pFl; vKw "*"; pBo]; replacer = Args.two (fun i b -> Node [aKw "ifthenelse"; b; i; aFl 0]) }]
 
 // LISTS
 let listRules = [

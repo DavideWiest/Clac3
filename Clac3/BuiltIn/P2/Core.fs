@@ -1,6 +1,5 @@
-﻿module Clac3.P2.BuiltIn
+﻿module Clac3.BuiltIn.P2.Core
 
-open Clac3.Expression
 open Clac3.Type
 open Clac3.FunctionalExpression
 open Clac3.Function
@@ -24,6 +23,12 @@ module Funcs =
         let ints = P2Args.two(fun a b -> P2Args.getInt(a) = P2Args.getInt(b))
         let floats = P2Args.two(fun a b -> P2Args.getFloat(a) = P2Args.getFloat(b))
 
+    module Comp = 
+        let ltInt = P2Args.two(fun a b -> P2Args.getInt(a) < P2Args.getInt(b))
+        let gtInt = P2Args.two(fun a b -> P2Args.getInt(a) > P2Args.getInt(b))
+        let ltFloat = P2Args.two(fun a b -> P2Args.getFloat(a) < P2Args.getFloat(b))
+        let gtFloat = P2Args.two(fun a b -> P2Args.getFloat(a) > P2Args.getFloat(b))
+
     module Boolean = 
         let and_ = P2Args.two(fun a b -> P2Args.getBool(a) && P2Args.getBool(b))
         let or_ = P2Args.two(fun a b -> P2Args.getBool(a) || P2Args.getBool(b))
@@ -33,7 +38,7 @@ let intFuncs =
     [|
         ("addInt", Funcs.Ints.add)
         ("subtractInt", Funcs.Ints.sub)
-        ("multilyInt", Funcs.Ints.mul)
+        ("multiplyInt", Funcs.Ints.mul)
         ("divideInt", Funcs.Ints.div)
     |]
     |> Array.map (fun (name, body) -> { ident = name; binding = BuiltIn (body >> FInteger >> FAtom); signature = { args = [TInteger; TInteger]; returnType=TInteger } })
@@ -42,7 +47,7 @@ let floatFuncs =
     [|
         ("addFloat", Funcs.Floats.add)
         ("subtractFloat", Funcs.Floats.sub)
-        ("multilyFloat", Funcs.Floats.mul)
+        ("multiplyFloat", Funcs.Floats.mul)
         ("divideFloat", Funcs.Floats.div)
     |]
     |> Array.map (fun (name, body) -> { ident = name; binding = BuiltIn (body >> FFloat >> FAtom); signature = { args = [TFloat; TFloat]; returnType=TFloat } })
@@ -55,6 +60,15 @@ let equalityFuncs =
     |]
     |> Array.map (fun (name, body, argType) -> { ident = name; binding = BuiltIn (body >> FBool >> FAtom); signature = { args = [argType; argType]; returnType=TBool } })
 
+let compFuncs = 
+    [|
+        ("ltInt", Funcs.Comp.ltInt, TBool)
+        ("gtInt", Funcs.Comp.gtInt, TBool)
+        ("ltFloat", Funcs.Comp.ltFloat, TBool)
+        ("gtFloat", Funcs.Comp.gtFloat, TBool)
+    |]
+    |> Array.map (fun (name, body, argType) -> { ident = name; binding = BuiltIn (body >> FBool >> FAtom); signature = { args = [argType; argType]; returnType=TBool } })
+
 let boolFuncs = 
     [|
         ("and", Funcs.Boolean.and_, TBool)
@@ -63,4 +77,4 @@ let boolFuncs =
     |]
     |> Array.map (fun (name, body, argType) -> { ident = name; binding = BuiltIn (body >> FBool >> FAtom); signature = { args = [argType; argType]; returnType=TBool } })
     
-let coreBindings: S1.Binding array = Array.concat [intFuncs; floatFuncs; equalityFuncs; boolFuncs]
+let coreBindings: S1.Binding array = Array.concat [intFuncs; floatFuncs; equalityFuncs; compFuncs; boolFuncs]

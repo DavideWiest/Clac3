@@ -1,7 +1,7 @@
 ﻿module Clac3.P1.DecisionTree.Domain
 
 open Clac3.Expression
-open Clac3.P1.RewriteRule
+open Clac3.P1.PatternReplacer
 
 type PatternWrapper<'a> = {
     value: 'a

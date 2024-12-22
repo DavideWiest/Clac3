@@ -2,7 +2,9 @@
 
 open Clac3.Util
 open Clac3.Expression
-open Clac3.P1.RewriteRule
+open Clac3.Type
+open Clac3.P1.Domain
+open Clac3.P1.PatternReplacer
 
 module rec ToString =
     let atom = function
@@ -24,6 +26,20 @@ module rec ToString =
         | expr -> expressionInner expr
 
     let node = List.map expressionInner >> String.concat " "
+
+let toDefinition (ident, signatureList: Type list, body) : RawBinding = 
+    if signatureList.Length = 0 then failwithf "Signature requires at least 1 type. Got: %A" signatureList
+    let argTypes, outputType = signatureList[..signatureList.Length-2], signatureList[signatureList.Length-1]
+
+    {
+        ident = ident
+        signature = { args = argTypes; returnType = outputType }
+        body = body
+    }
+
+let toRawValue body = RValue body
+let toRawCustomFn (argIdents, body) = RCustom { argIdents = Array.ofList argIdents; body = body }
+
 
 // value patterns
 let vAtom = Value >> PAtom

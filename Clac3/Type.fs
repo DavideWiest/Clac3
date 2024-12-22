@@ -17,7 +17,7 @@ and Type =
     | TKeyword
     | TArray of Type
 
-    | TFunc of FnSignature
+    | TLambda of FnSignature
 
     | TUnit
 

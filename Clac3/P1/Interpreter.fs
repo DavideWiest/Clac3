@@ -15,35 +15,35 @@ let rec typeAnnotateAtom a =
     | Variable _ -> TVariable
     | Keyword _ -> TKeyword
 
-let rec inferAndValidateType (bindingStore: S1.BindingStore) (children: TAExpression list) : Type =
+let rec inferAndValidateType (bindingStore: S1.SignatureStore) (children: TAExpression list) : Type =
     match children with
     | [] -> TUnit
     | head::args ->
         match head with
-        | { eType=TFunc _; expr=_ } -> failwith "todo"
+        | { eType=TLambda _; expr=_ } -> failwith "todo"
         | { eType=TKeyword; expr=Atom (Keyword fnName) } ->
             match bindingStore.TryFind fnName with
             | None -> failwithf "Function %A not found" fnName
-            | Some (binding) ->
+            | Some (signature) ->
                 let argTypes = args |> List.map (fun a -> a.eType)
 
-                List.zip binding.signature.args.[..argTypes.Length - 1] argTypes 
+                List.zip signature.args.[..argTypes.Length - 1] argTypes 
                 |> List.iter (fun (tExpected, tActual) -> 
                     if tExpected <> tActual then failwithf "Expected type %A, got %A when calling %A" tExpected tActual fnName
                 )
 
-                if binding.signature.args.Length > argTypes.Length 
-                then failwithf "Got too many args for %A: Expected %A, got %A" fnName binding.signature.args.Length argTypes.Length
+                if signature.args.Length > argTypes.Length 
+                then failwithf "Got too many args for %A: Expected %A, got %A" fnName signature.args.Length argTypes.Length
 
-                let argTypesRemaining = binding.signature.args[args.Length..]
+                let argTypesRemaining = signature.args[args.Length..]
 
                 if argTypesRemaining.Length = 0 
-                then binding.signature.returnType 
-                else TFunc { args=argTypesRemaining; returnType=binding.signature.returnType }
+                then signature.returnType 
+                else TLambda { args=argTypesRemaining; returnType=signature.returnType }
 
         | _ -> failwithf "Evaluated node in phase 1 must be convertible to functional form. Expected function or keyword, got: %A" head
 
-let rec evalExprInner (bindingStore: S1.BindingStore) (tryReplace: Expression -> Expression option) expr : TAExpression =
+let rec evalExprInner (bindingStore: S1.SignatureStore) (tryReplace: Expression -> Expression option) expr : TAExpression =
     match expr with
     | Atom a -> tryReplace (Atom a) |> Option.map (evalExprInner bindingStore tryReplace) |> Option.defaultValue ({ expr=Atom a; eType=typeAnnotateAtom a })
     | Array arrRaw -> 

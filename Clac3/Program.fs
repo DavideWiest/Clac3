@@ -2,30 +2,27 @@
 open Clac3.Type
 open Clac3.Application
 open Clac3.Expression
+open Clac3.P1.PatternReplacer
 open Clac3.P1.DomainUtil
-open Clac3.P2.Application
+open Clac3.App.P2Application
 open Clac3.P2.DomainUtil
-open Clac3.ClacApplication
+open Clac3.App.ClacApplication
 open Clac3.Data
 
 let fibFn = toBinding ("fib", [TInteger; TInteger],
     toCustomFn (
         ["x"],
         toBranch (
-            toReference ("eqInt", [|toValueReference "x"; faInt 0|]),
-            faInt 0,
-            toBranch (
-                toReference ("eqInt", [|toValueReference "x"; faInt 1|]),
-                faInt 1,
-                toReference ("addInt", [|
-                    toReference ("fibonacci", [|
-                        toReference ("subtractInt", [|toValueReference "x"; faInt 1|])
-                    |])
-                    toReference ("fibonacci", [|
-                        toReference ("subtractInt", [|toValueReference "x"; faInt 2|])
-                    |])
+            toReference ("ltInt", [|toValueReference "x"; faInt 2|]),
+            toValueReference "x",
+            toReference ("addInt", [|
+                toReference ("fib", [|
+                    toReference ("subtractInt", [|toValueReference "x"; faInt 1|])
                 |])
-            )
+                toReference ("fib", [|
+                    toReference ("subtractInt", [|toValueReference "x"; faInt 2|])
+                |])
+            |])
         )
     )
 )
@@ -34,24 +31,37 @@ let fibFnFloat = toBinding("fibFloat", [TFloat; TFloat],
     toCustomFn (
         ["x"],
         toBranch (
-            toReference ("eqFloat", [|toValueReference "x"; faFl 0.0|]),
-            faFl 0.0,
-            toBranch (
-                toReference ("eqFloat", [|toValueReference "x"; faFl 1.0|]),
-                faFl 1.0,
-                toReference ("addFloat", [|
-                    toReference ("fibonacciFloat", [|
-                        toReference ("subtractFloat", [|toValueReference "x"; faFl 1.0|])
-                    |])
-                    toReference ("fibonacciFloat", [|
-                        toReference ("subtractFloat", [|toValueReference "x"; faFl 2.0|])
-                    |])
+            toReference ("ltFloat", [|toValueReference "x"; faFl 2.0|]),
+            toValueReference "x",
+            toReference ("addFloat", [|
+                toReference ("fibFloat", [|
+                    toReference ("subtractFloat", [|toValueReference "x"; faFl 1.0|])
                 |])
-            )
+                toReference ("fibFloat", [|
+                    toReference ("subtractFloat", [|toValueReference "x"; faFl 2.0|])
+                |])
+            |])
         )
     )
 )
 
+let factFn = toDefinition("fact", [TInteger; TInteger], 
+    toRawCustomFn (
+        ["x"],
+        Node [
+            aKw "if"; Node [aVar "x"; aKw "="; aInt 0]; 
+            aKw "then"; aInt 1; 
+            aKw "else"; Node [
+                aVar "x"; aKw "*"; Node [aKw "fact"; Node [aVar "x"; aKw "-"; aInt 1]]
+            ]
+        ]
+    )
+)
+
+let factRule = {
+    pattern = NC [pInt; vKw "!"]
+    replacer = Args.one (fun n -> Node [aKw "fact"; n])
+}
 
 let appFunc = ExtendedFunctionalApplication([|fibFn|],
     [|toReference ("fib", [|faInt 25|])|]
@@ -62,11 +72,11 @@ let appFunc2 = ExtendedFunctionalApplication([|fibFnFloat|],
 )
 
 let clacApp = ExtendedClacApplication(
-    [],
+    [factRule],
     [|fibFn|],
-    [Node [aKw "fib"; aInt 25]]
+    [|factFn|],
+    [Node [aKw "fib"; Node [aInt 4; aKw "!"]]]
 )
-
 
 let measureApp (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) = 
     let args = app.getEvalArgs

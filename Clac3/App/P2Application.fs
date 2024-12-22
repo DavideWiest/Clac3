@@ -1,10 +1,9 @@
-﻿module Clac3.P2.Application
+﻿module Clac3.App.P2Application
 
-open Clac3.Expression
 open Clac3.FunctionalExpression
 open Clac3.Function
 open Clac3.Application
-open Clac3.P2.BuiltIn
+open Clac3.BuiltIn.P2.Core
 open Clac3.P2.Interpreter
 open Clac3.P2.Normalizer
 

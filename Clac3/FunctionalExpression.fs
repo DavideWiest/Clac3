@@ -11,6 +11,8 @@ type Reference<'a> = {
     args: FExpression<'a> array
 }
 
+// todo: branch and function bindings should contain a list of extra bindings
+
 and Branch<'a> = {
     cond: FExpression<'a>
     trueB: FExpression<'a>
@@ -18,11 +20,11 @@ and Branch<'a> = {
 }
 
 and FExpression<'a> =
+    | FUnit
     | FAtom of FAtom
     | FArray of FExpression<'a> array
     | FRef of Reference<'a>
     | FBranch of Branch<'a>
-    | FUnit
    
 module S1 =
     type Reference = Reference<string>

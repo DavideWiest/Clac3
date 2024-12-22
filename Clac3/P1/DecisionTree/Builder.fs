@@ -1,7 +1,7 @@
 ﻿module rec Clac3.P1.DecisionTree.Builder
 
 open Clac3.Util
-open Clac3.P1.RewriteRule
+open Clac3.P1.PatternReplacer
 open Clac3.P1.DecisionTree.Domain
 
 let private ifEmptyNoneElseApply f (l: 'a list) = if l.Length = 0 then None else f l |> Some

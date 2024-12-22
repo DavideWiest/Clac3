@@ -13,9 +13,6 @@ module Expression =
         | FAtom a -> S2.FExpression.FAtom a
         | FArray a -> a |> Array.map (switchBindingIdentOne bindingIdentMap) |> S2.FExpression.FArray
         | FRef fc -> 
-            printfn "switching %A" fc
-            printfn "bindingIdentMap: %A" bindingIdentMap
-
             S2.FExpression.FRef { 
                 ident = bindingIdentMap[fc.ident]; 
                 args = fc.args |> Array.map (switchBindingIdentOne bindingIdentMap) 

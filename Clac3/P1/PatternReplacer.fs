@@ -1,4 +1,4 @@
-﻿module Clac3.P1.RewriteRule
+﻿module Clac3.P1.PatternReplacer
 
 open Clac3.Expression
 

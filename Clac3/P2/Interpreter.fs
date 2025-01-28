@@ -2,7 +2,7 @@
 
 open Clac3.Expression
 open Clac3.FunctionalExpression
-open Clac3.Function
+open Clac3.Binding
 
 // TODO: currying, possible edge cases
 // TODO: functions should be able to return functions

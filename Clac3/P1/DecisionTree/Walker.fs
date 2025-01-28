@@ -20,17 +20,17 @@ type Walker(tree: FirstLevelPattern, lift: TALift) =
             |> Option.bind (fun key ->
                 tryFindInPatterns key pdt.constantValue
                 |> Option.orElse (tryFindInPatterns key pdt.value)
-                |> Option.orElse (pdt.any |> Option.map withKey)
             )
+            |> Option.orElse (pdt.any |> Option.map withKey)
         )
     
-    member private this.tryFindAtomReplacer tree atomExpr atom =
-        match atom with
+    member private this.tryFindAtomReplacer tree atomExpr = function
         | Bool b -> tree.bool |> this.tryFindInPatternMap (Some b) atomExpr
         | Integer i -> tree.integer |> this.tryFindInPatternMap (Some i) atomExpr
         | Float f -> tree.float |> this.tryFindInPatternMap (Some f) atomExpr
         | String s -> tree.string |> this.tryFindInPatternMap (Some s) atomExpr
-        | Variable v -> this.tryFindAtomReplacerAsUnevaluated atomExpr tree // use the variable type to find the replacer
+        | Variable _ -> 
+            this.tryFindAtomReplacerAsUnevaluated atomExpr tree // use the variable type to find the replacer
         | Keyword k -> tree.keyword |> this.tryFindInPatternMap (Some k) atomExpr
 
     member private this.walkAtom atomExpr atom (pattern: PatternWrapper<AtomDecisionTree>) = 
@@ -83,66 +83,67 @@ type Walker(tree: FirstLevelPattern, lift: TALift) =
         nodeExpr |> this.tryFindReplacerAsNode tree
 
     // Arrays and Nodes
-    member private this.tryGetNodeTreeResultInner (children: TAExpression list) (flp: FirstLevelPattern, next: NodeDecisionTree) =
-        this.walk flp children.Head
+    member private this.tryGetNodeTreeResultInner ctxPath (children: TAExpression list) (flp: FirstLevelPattern, next: NodeDecisionTree) =
+        this.walk ctxPath flp children.Head     
         |> Option.bind (fun (_, args) -> 
             next
-            |> this.walkNodeInner children.Tail 
+            |> this.walkNodeInner ctxPath children.Tail 
             |> Option.map (fun (replacer, argsTail) -> replacer, args@argsTail)
         )
 
-    member private this.walkNodeInner (children: TAExpression list) pattern = 
+    member private this.walkNodeInner ctxPath (children: TAExpression list) pattern = 
         // this order is crucial
         // anything that could cut of another pattern should be check later than that one
         // continuing rules first -- then ending rules -- then rest/collector rules
-        if children.Length > 0 then List.tryPick (this.tryGetNodeTreeResultInner children) pattern.value else None
-        |> Option.orElse (if children.Length = 1 then pattern.ending |> Option.bind (fun pattern -> this.walk pattern children.Head) else None) // information loss here
+        if children.Length > 0 then List.tryPick (this.tryGetNodeTreeResultInner ctxPath children) pattern.value else None
+        |> Option.orElse (if children.Length = 1 then pattern.ending |> Option.bind (fun pattern -> this.walk ctxPath pattern children.Head) else None) // information loss here
         // dont check for rest if there are no children - this is the base case that should be a separate rule/pattern
         |> Option.orElse (if children.Length > 0 then pattern.rest |> Option.map (fun replacer -> replacer, children) else None)
 
-    member private this.walkNode (maybeExpr: TAExpression option) (children: TAExpression list) (pattern: CollectablePatternWrapper<NodeDecisionTree>) = 
-        pattern.value  |> this.walkNodeInner children |> Option.orElse (if maybeExpr.IsSome then Option.tupleWithRev pattern.any [maybeExpr.Value] else None)
+    member private this.walkNode ctxPath (maybeExpr: TAExpression option) (children: TAExpression list) (pattern: CollectablePatternWrapper<NodeDecisionTree>) = 
+        pattern.value  |> this.walkNodeInner ctxPath children |> Option.orElse (if maybeExpr.IsSome then Option.tupleWithRev pattern.any [maybeExpr.Value] else None)
 
     // Expressions
-    member private this.walkExpression tree expr : TreeResult = 
+    member private this.walkExpressionValue ctxPath tree = function
+        | TAAtom a -> 
+            tree.atom |> Option.bind (this.walkAtom (a |> TAAtom |> lift ctxPath) a)
+        | TAArray items -> 
+            tree.array |> Option.bind (this.walkNode ctxPath (items |> TAArray |> lift ctxPath |> Some) items)
+        | TANode children -> 
+            tree.node |> Option.bind (this.walkNode ctxPath None children)
+
+    member private this.walkExpression ctxPath tree expr : TreeResult = 
+        // the method still needs to check every part because it's called by the value-methods too
         match expr.expr with
         | TAAtom a -> tree.atom |> Option.bind (this.walkAtom expr a)
-        | TAArray children -> tree.array |> Option.bind (this.walkNode (Some expr) children)
+        | TAArray children -> tree.array |> Option.bind (this.walkNode ctxPath (Some expr) children)
         | TANode children -> 
             tree.node 
-            |> Option.bind (this.walkNode (Some expr) children)
+            |> Option.bind (this.walkNode ctxPath (Some expr) children)
             |> Option.orElse (this.walkAtomAsNode expr tree)
 
-    member private this.walkExpressionValue tree = function
-        | TAAtom a -> 
-            tree.atom |> Option.bind (this.walkAtom (lift (TAAtom a)) a)
-        | TAArray items -> 
-            tree.array |> Option.bind (this.walkNode (items |> TAArray |> lift |> Some) items)
-        | TANode children -> 
-            tree.node |> Option.bind (this.walkNode None children)
-
     // First level
-    member this.walk (tree: FirstLevelPattern) (expr: TAExpression) : TreeResult = 
+    member this.walkValue ctxPath (tree: FirstLevelPattern) (expr: TAExpressionValue) : TreeResult = 
+        tree.value |> Option.bind (fun v -> this.walkExpressionValue ctxPath v expr) 
+
+    member this.walk ctxPath (tree: FirstLevelPattern) (expr: TAExpression) : TreeResult = 
         tree.value 
-        |> Option.bind (fun v -> this.walkExpression v expr) 
+        |> Option.bind (fun v -> this.walkExpression ctxPath v expr) 
         |> Option.orElse (Option.tupleWithRev tree.any [expr])
 
-    member this.walkValue (tree: FirstLevelPattern) (expr: TAExpressionValue) : TreeResult = 
-        tree.value |> Option.bind (fun v -> this.walkExpressionValue v expr) 
-
     // replacing
-    member this.tryReplaceValue = 
-        // this.walkValue tree >> Option.map (fun (replacer, args) -> replacer args)
-        (fun x -> 
-            printfn "ReplaceValue: %A" x 
-            x) >> this.walkValue tree >> Option.map (fun (replacer, args) -> 
-                printfn "Match: %A(%A) -> %A" replacer args (replacer args)
-                replacer args)
+    member this.tryReplaceValue ctxPath = 
+        this.walkValue ctxPath tree >> Option.map (fun (replacer, args) -> replacer args)
+        //(fun x -> 
+        //    printfn "ReplaceValue: %A" x 
+        //    x) >> this.walkValue ctxPath tree >> Option.map (fun (replacer, args) -> 
+        //        printfn "Match: %A(%A) -> %A" replacer args (replacer args)
+        //        replacer args)
 
-    member this.tryReplace = 
-        // this.walk tree >> Option.map (fun (replacer, args) -> replacer args)
-        (fun x -> 
-            printfn "Replace: %A" x 
-            x) >> this.walk tree >> Option.map (fun (replacer, args) -> 
-                printfn "Match: \n    %A(%A) \n->\n    %A" replacer args (replacer args)
-                replacer args)
+    member this.tryReplace ctxPath = 
+        this.walk ctxPath tree >> Option.map (fun (replacer, args) -> replacer args)
+        //(fun x -> 
+        //    printfn "Replace: %A" x 
+        //    x) >> this.walk ctxPath tree >> Option.map (fun (replacer, args) -> 
+        //        printfn "Match: \n    %A(%A) \n->\n    %A" replacer args (replacer args)
+        //        replacer args)

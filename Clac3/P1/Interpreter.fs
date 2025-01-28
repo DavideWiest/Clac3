@@ -18,4 +18,4 @@ let rec evalExprInner valueReplace liftedReplace lift expr =
     // the second replacement round is for matching expressions with an unevaluated node (but known type) to patterns
     expr |> evaluate |> valueReplace |> lift |> liftedReplace
 
-let evalExpr valueReplace replace (lift: TALift) expectedOutputType = evalExprInner valueReplace replace lift >> Interpreter.compareType expectedOutputType
+let evalExpr valueReplace replace (lift: TALift) ctxPath expectedOutputType = evalExprInner valueReplace replace (lift ctxPath) >> Interpreter.compareType expectedOutputType

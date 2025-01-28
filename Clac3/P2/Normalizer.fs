@@ -1,7 +1,7 @@
 ﻿module Clac3.P2.Normalizer
 
 open Clac3.FunctionalExpression
-open Clac3.Function
+open Clac3.Binding
 
 module Expression = 
     let rec switchFunctionCall (bindingIdentMap: Map<string, int>) (fc: S1.Reference) = 

@@ -1,4 +1,4 @@
-﻿module Clac3.Function
+﻿module Clac3.Binding
 
 open Clac3.FunctionalExpression
 open Clac3.Type
@@ -26,10 +26,24 @@ module S1 =
     type Binding = Binding<string, S1.FExpression>
     type BindingStore = Map<string, Binding<string, S1.FExpression>>
 
-    type ReferenceStore = Map<string, Type>
-
 module S2 =
     type BindingValue = BindingValue<int, S2.FExpression>
     type Binding = Binding<int, S2.FExpression>
     type BindingStore = BindingValue<int, S2.FExpression> option array
 
+// first string for closure name, second for reference name
+// a tree structure would be more appropriate
+type CtxPath = string list
+type ReferenceStore = Map<CtxPath, Map<string, Type>>
+
+let rec accessReferenceStore (store: ReferenceStore) (path: CtxPath) (name: string) = 
+    let nextHigherLevel = List.rev >> List.tail >> List.rev
+    let handleNotFound () = 
+        if path.Length = 0 then None else accessReferenceStore store (nextHigherLevel path) name
+
+    match (store.TryFind path) with
+    | Some ctx -> 
+        match ctx.TryFind name with
+        | Some t -> Some t
+        | None -> handleNotFound ()
+    | None -> handleNotFound ()

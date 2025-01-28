@@ -90,10 +90,12 @@ let booleanRules = [
 let arithmeticRules = 
     [
         "+", "add"
-        "-", "substract"
-        "*", "mul"
-        "/", "div"
+        "-", "subtract"
+        "*", "multiply"
+        "/", "divide"
         "**", "pow"
+        ">", "gt"
+        "<", "lt"
     ] 
     |> List.collect (fun (op, fnName) -> Helper.buildArithmeticRuleSetInfixOp op (fnName + "Int") (fnName + "Float"))
 

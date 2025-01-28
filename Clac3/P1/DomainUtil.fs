@@ -3,6 +3,7 @@
 open Clac3.Util
 open Clac3.Expression
 open Clac3.Type
+open Clac3.Binding
 open Clac3.P1.Domain
 open Clac3.P1.PatternReplacer
 
@@ -29,15 +30,15 @@ module rec ToString =
 
 
 module Interpreter = 
-    let rec valueReplacerWrapper tryReplaceValue exprValue = 
-        match tryReplaceValue exprValue with
-        | Some exprValue' -> valueReplacerWrapper tryReplaceValue exprValue'
+    let rec valueReplacerWrapper tryReplaceValue ctxPath exprValue = 
+        match tryReplaceValue ctxPath exprValue with
+        | Some exprValue' -> valueReplacerWrapper tryReplaceValue ctxPath exprValue'
         | None -> exprValue
 
     // must be lifted every time it's replaced?
-    let rec replacerWrapper lift tryReplace expr : TAExpression = 
-        match tryReplace expr with
-        | Some expr' -> replacerWrapper lift tryReplace (lift expr')
+    let rec replacerWrapper lift tryReplace ctxPath expr : TAExpression = 
+        match tryReplace ctxPath expr with
+        | Some expr' -> replacerWrapper lift tryReplace ctxPath (lift ctxPath expr')
         | None -> expr
 
     let compareType expected taExpr = 
@@ -47,15 +48,17 @@ module Interpreter =
 
 
 module Lift = 
-    let typeAnnotateAtom (bindingTypeMap: Map<string, Type>) = function
+    let typeAnnotateAtom ctxPath referenceStore = function
         | Bool _ -> TBool
         | Integer _ -> TInteger
         | Float _ -> TFloat
         | String _ -> TString
-        | Variable v -> bindingTypeMap[v]
+        | Variable v -> 
+            accessReferenceStore ctxPath referenceStore v
+            |> fun o -> if o.IsSome then o.Value else failwithf "Unbound reference: %A" v
         | Keyword _ -> TKeyword
 
-    let liftAtom bindingTypeMap a = { expr=TAAtom a; eType=typeAnnotateAtom bindingTypeMap a }
+    let liftAtom referenceStore ctxPath a = { expr=TAAtom a; eType=typeAnnotateAtom referenceStore ctxPath a }
 
     let typeAnnotateAtomWithoutBindings = function
         | Bool _ -> TBool

@@ -2,6 +2,7 @@
 
 open Clac3.Expression
 open Clac3.Type
+open Clac3.Binding
 
 // Patterns
 
@@ -43,18 +44,18 @@ type RewriteRule = {
     replacer: ProtoReplacer
 }
 
-type ValueReplacer = TAExpressionValue -> TAExpressionValue
-type LiftedReplacer = TAExpression -> TAExpression
+type ValueReplacer = CtxPath -> TAExpressionValue -> TAExpressionValue
+type LiftedReplacer = CtxPath -> TAExpression -> TAExpression
 
-type TALift = TAExpressionValue -> TAExpression
+type TALift = CtxPath -> TAExpressionValue -> TAExpression
 
 type TALifter(
-        atomLifter: Atom -> TAExpression,
-        arrayLifter: TAExpression list -> TAExpression,
-        nodeLifter: TAExpression list -> TAExpression
+        atomLifter: CtxPath -> Atom -> TAExpression,
+        arrayLifter: CtxPath -> TAExpression list -> TAExpression,
+        nodeLifter: CtxPath -> TAExpression list -> TAExpression
     ) = 
     
-    member this.toTAExpr = function
-        | TAAtom a -> atomLifter a
-        | TAArray items -> arrayLifter items
-        | TANode children -> nodeLifter children
+    member this.toTAExpr ctxPath = function
+        | TAAtom a -> atomLifter ctxPath a
+        | TAArray items -> arrayLifter ctxPath items
+        | TANode children -> nodeLifter ctxPath children

@@ -12,7 +12,7 @@
     <Compile Include="Expression.fs" />
     <Compile Include="Type.fs" />
     <Compile Include="FunctionalExpression.fs" />
-    <Compile Include="Function.fs" />
+    <Compile Include="Binding.fs" />
     <Compile Include="P1\Domain.fs" />
     <Compile Include="P1\PatternReplacer.fs" />
     <Compile Include="P1\DomainUtil.fs" />

@@ -5,7 +5,7 @@ open Clac3.Constants
 open Clac3.Expression
 open Clac3.Type
 open Clac3.FunctionalExpression
-open Clac3.Function
+open Clac3.Binding
 open Clac3.P1.Domain
 
 module rec P2ToString =
@@ -35,7 +35,7 @@ module rec P2ToString =
 
 
 module Interpreter = 
-    let getReferenceStore (baseBindings: S1.Binding array) (definitions: RawBinding array) = 
+    let getReferenceStore (baseBindings: S1.Binding array) (definitions: RawBinding array) : ReferenceStore = 
         let baseSignatureMap = 
             baseBindings 
             |> Array.map (fun b -> b.ident, b.signature) 
@@ -44,9 +44,29 @@ module Interpreter =
             definitions 
             |> Array.map (fun d -> d.ident, d.signature)
 
-        baseSignatureMap
-        |> Array.append customSignatureMap
-        |> Array.map (fun (k, signature) -> k, TLambda signature)
+        // suffices for flat bindings, but not nested ones
+        let referenceStore = 
+            definitions
+            |> Array.choose (fun d -> 
+                match d.body with
+                | RCustom { argIdents = argIdents; body = _ } -> 
+                    let oneIdentMap = 
+                        argIdents 
+                        |> Array.mapi (fun i ident -> ident, d.signature.args[i]) 
+                        |> Map.ofArray
+                    
+                    Some ([d.ident], oneIdentMap)
+                | RValue _ -> None // a value doesn't have any arguments
+            )
+        
+        let referenceStoreLowestLevel = 
+            baseSignatureMap
+            |> Array.append customSignatureMap
+            |> Array.map (fun (k, signature) -> k, TLambda signature)
+            |> Map.ofArray
+
+        referenceStore
+        |> Array.append [| ([], referenceStoreLowestLevel) |]
         |> Map.ofArray
 
     let getBindingMap (bindings: S1.Binding array) =    

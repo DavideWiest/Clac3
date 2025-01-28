@@ -2,7 +2,7 @@
 
 open Clac3.Application
 open Clac3.FunctionalExpression
-open Clac3.Function
+open Clac3.Binding
 open Clac3.P1.Domain
 open Clac3.P2.Conversion
 open Clac3.P2.Normalizer
@@ -16,8 +16,8 @@ open Clac3.App.P1Application
 let private extractBindingExprs definitions = 
     definitions |> Array.map (fun d -> 
         match d.body with
-        | RValue expr -> expr
-        | RCustom fn -> fn.body
+        | RValue expr -> [d.ident], expr
+        | RCustom fn -> [d.ident], fn.body
     )
 
 let private toBinding (definition: RawBinding) newExpr = 
@@ -40,7 +40,8 @@ type InterpretedApp(rewriteRules, builtInDefinitions: S1.Binding array, definiti
     override this.getEvalArgs =
         let newBindingExprs = extractBindingExprs definitions |> List.ofArray
         let lift = Interpreter.getReferenceStore builtInDefinitions definitions |> functionalLift
-        let p1app = new RewriteRuleApplication(lift, rewriteRules, exprs@newBindingExprs)
+        let exprs' = exprs |> List.map (fun e -> [], e)
+        let p1app = new RewriteRuleApplication(lift, rewriteRules, exprs'@newBindingExprs)
 
         // use the same application and separate the two later to avoid overhead
         // you could create call evalArgs once and use it for the two applications, but that is less reliable, especially later on

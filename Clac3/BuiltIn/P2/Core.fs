@@ -2,7 +2,7 @@
 
 open Clac3.Type
 open Clac3.FunctionalExpression
-open Clac3.Function
+open Clac3.Binding
 open Clac3.P2.DomainUtil
 
 module Funcs =
@@ -11,12 +11,14 @@ module Funcs =
         let sub = P2Args.two(fun a b -> P2Args.getInt(a) - P2Args.getInt(b))
         let mul = P2Args.two(fun a b -> P2Args.getInt(a) * P2Args.getInt(b))
         let div = P2Args.two(fun a b -> P2Args.getInt(a) / P2Args.getInt(b))
+        let pow = P2Args.two(fun a b -> pown (P2Args.getInt a) (P2Args.getInt b))
 
     module Floats = 
         let add = P2Args.two(fun a b -> P2Args.getFloat(a) + P2Args.getFloat(b))
         let sub = P2Args.two(fun a b -> P2Args.getFloat(a) - P2Args.getFloat(b))
         let mul = P2Args.two(fun a b -> P2Args.getFloat(a) * P2Args.getFloat(b))
         let div = P2Args.two(fun a b -> P2Args.getFloat(a) / P2Args.getFloat(b))
+        let pow = P2Args.two(fun a b -> P2Args.getFloat(a) ** P2Args.getFloat(b))
 
     module Eq =
         let bools = P2Args.two(fun a b -> P2Args.getBool(a) = P2Args.getBool(b))
@@ -40,6 +42,7 @@ let intFuncs =
         ("subtractInt", Funcs.Ints.sub)
         ("multiplyInt", Funcs.Ints.mul)
         ("divideInt", Funcs.Ints.div)
+        ("powInt", Funcs.Ints.pow)
     |]
     |> Array.map (fun (name, body) -> { ident = name; binding = BuiltIn (body >> FInteger >> FAtom); signature = { args = [TInteger; TInteger]; returnType=TInteger } })
 
@@ -49,6 +52,7 @@ let floatFuncs =
         ("subtractFloat", Funcs.Floats.sub)
         ("multiplyFloat", Funcs.Floats.mul)
         ("divideFloat", Funcs.Floats.div)
+        ("powFloat", Funcs.Floats.pow)
     |]
     |> Array.map (fun (name, body) -> { ident = name; binding = BuiltIn (body >> FFloat >> FAtom); signature = { args = [TFloat; TFloat]; returnType=TFloat } })
 

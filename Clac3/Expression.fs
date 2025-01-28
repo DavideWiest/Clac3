@@ -13,5 +13,5 @@ type Atom =
 // the unit type is not included because it's represented by an empty node
 type Expression =
     | Atom of Atom
-    | Array of Expression array
+    | Array of Expression list
     | Node of Expression list

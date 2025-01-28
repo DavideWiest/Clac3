@@ -1,11 +1,14 @@
-﻿module Clac3.App.ClacApplication
+﻿module Clac3.App.InterpretedApp
 
 open Clac3.Application
 open Clac3.FunctionalExpression
 open Clac3.Function
 open Clac3.P1.Domain
-open Clac3.P2.Interpreter
+open Clac3.P2.Conversion
 open Clac3.P2.Normalizer
+open Clac3.P2.Interpreter
+open Clac3.P2.DomainUtil
+open Clac3.P2.Lift
 open Clac3.BuiltIn.P1.Core
 open Clac3.BuiltIn.P2.Core
 open Clac3.App.P1Application
@@ -27,7 +30,7 @@ let private toBinding (definition: RawBinding) newExpr =
             | RCustom fn -> Custom { argIdents = fn.argIdents; body = newExpr }
     }
 
-type ClacApplication(rewriteRules, bindings, definitions, exprs) =
+type InterpretedApp(rewriteRules, builtInDefinitions: S1.Binding array, definitions, exprs) =
     inherit Application<(S2.FExpression array) * S2.BindingStore * Map<int, string>, S2.FExpression, S2.FExpression>()
 
     override this.eval args = 
@@ -35,29 +38,23 @@ type ClacApplication(rewriteRules, bindings, definitions, exprs) =
         exprs |> Array.map (evalFExpr store) |> Seq.ofArray
 
     override this.getEvalArgs =
-        let rawBindingExprs = extractBindingExprs definitions |> List.ofArray
+        let newBindingExprs = extractBindingExprs definitions |> List.ofArray
+        let lift = Interpreter.getReferenceStore builtInDefinitions definitions |> functionalLift
+        let p1app = new RewriteRuleApplication(lift, rewriteRules, exprs@newBindingExprs)
 
-        let p1app = new RewriteRuleApplication(bindings, rewriteRules, definitions, exprs@rawBindingExprs)
         // use the same application and separate the two later to avoid overhead
         // you could create call evalArgs once and use it for the two applications, but that is less reliable, especially later on
-        let allExpressions = p1app.eval (p1app.getEvalArgs) |> Seq.toArray
+        let allExpressions = p1app.eval (p1app.getEvalArgs) |> Seq.map (toFunctionalExpressionForTopLevel None) |> Seq.map fst |> Seq.toArray
         let expressions, bindingExprs = allExpressions[0..(List.length exprs) - 1], allExpressions[(List.length exprs)..]
 
-        let baseBindingTuple = 
-            bindings
-            |> Array.map (fun b -> b.ident, b)
-
-        let customBindingTuple = 
+        let liftedDefinitions = 
             bindingExprs
             |> Array.zip definitions
-            |> Array.map (fun (d, newExpr) -> d.ident, toBinding d newExpr)
+            |> Array.map (fun (d, newExpr) -> toBinding d newExpr)
 
-        let bindingMap = 
-            baseBindingTuple 
-            |> Array.append customBindingTuple 
-            |> Map.ofArray
+        let bindingMap = Interpreter.getBindingMap (Array.append builtInDefinitions liftedDefinitions)
 
         normalize expressions bindingMap
 
-type ExtendedClacApplication(extraRules, extraBindings, definitions, exprs) =
-    inherit ClacApplication(coreRules@extraRules, Array.append coreBindings extraBindings, definitions, exprs)
+type ExtendedInterpretedApp(extraRules, extraBuiltInDefinitions, definitions, exprs) =
+    inherit InterpretedApp(coreRules@extraRules, Array.append coreBindings extraBuiltInDefinitions, definitions, exprs)

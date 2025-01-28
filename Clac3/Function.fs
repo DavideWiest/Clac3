@@ -26,7 +26,7 @@ module S1 =
     type Binding = Binding<string, S1.FExpression>
     type BindingStore = Map<string, Binding<string, S1.FExpression>>
 
-    type SignatureStore = Map<string, FnSignature>
+    type ReferenceStore = Map<string, Type>
 
 module S2 =
     type BindingValue = BindingValue<int, S2.FExpression>

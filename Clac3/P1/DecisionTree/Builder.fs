@@ -1,16 +1,40 @@
 ﻿module rec Clac3.P1.DecisionTree.Builder
 
 open Clac3.Util
+open Clac3.Type
 open Clac3.P1.PatternReplacer
 open Clac3.P1.DecisionTree.Domain
 
 let private ifEmptyNoneElseApply f (l: 'a list) = if l.Length = 0 then None else f l |> Some
 
-let private separateAnyFromValueBased ruleGroupStr (rules: (PatternUnion<'a> * Replacer) list) =
+let private separateSimplePUOptions ruleGroupStr (rules: (SimplePatternUnion<'a> * ProtoReplacer) list) =
+    let valueRules = rules |> List.choose (fun (pattern, replacer) -> 
+        match pattern with
+        | SimplePatternUnion.Value expr -> Some (expr, replacer)
+        | _ -> None
+    )
+
+    let anyRules = rules |> List.choose (fun (pattern, replacer) -> 
+        match pattern with
+        | SimplePatternUnion.Any -> Some replacer
+        | _ -> None
+    )
+
+    if anyRules.Length > 1 then failwithf "Got multiple rules that match the same pattern (any, %s): %A" ruleGroupStr anyRules
+
+    valueRules, List.headOption anyRules
+
+let private separatePUOptions ruleGroupStr (rules: (PatternUnion<'a> * ProtoReplacer) list) =
+    let constantValueRules = rules |> List.choose (fun (pattern, replacer) -> 
+        match pattern with
+        | ConstantValue expr -> Some (expr, replacer)
+        | _ -> None
+    )
+
     let valueRules = rules |> List.choose (fun (pattern, replacer) -> 
         match pattern with
         | Value expr -> Some (expr, replacer)
-        | Any -> None
+        | _ -> None
     )
 
     let anyRules = rules |> List.choose (fun (pattern, replacer) -> 
@@ -19,30 +43,30 @@ let private separateAnyFromValueBased ruleGroupStr (rules: (PatternUnion<'a> * R
         | _ -> None
     )
 
-    if anyRules.Length > 1 then failwithf "Got multiple rules that match the same pattern (any, %s)" ruleGroupStr
+    if anyRules.Length > 1 then failwithf "Got multiple rules that match the same pattern (any, %s): %A" ruleGroupStr anyRules
 
-    valueRules, List.headOption anyRules
+    constantValueRules, valueRules, List.headOption anyRules
 
 // Atoms
-let private buildPatternMap (values: (PatternUnion<'a> * Replacer) list) : PatternLeaf<'a> =
-    let valueRules, anyRule = separateAnyFromValueBased "atom" values
-    { value = valueRules; any = anyRule }
+let private buildPatternMap (values: (PatternUnion<'a> * ProtoReplacer) list) : PatternWrapper<('a * ProtoReplacer) list> =
+    let constantValueRules, valueRules, anyRule = separatePUOptions "atom" values
+    { constantValue = constantValueRules; value = valueRules; any = anyRule }
 
 // TODO: use resizeArray
-let private partitionAtoms (rules: (AtomPattern * Replacer) list) =
+let private partitionAtoms (rules: (AtomPattern * ProtoReplacer) list) =
     rules
-    |> List.fold (fun (boolRules, intRules, floatRules, strRules, arrRules, varRules, kwRules) (pattern, replacer) -> 
+    |> List.fold (fun (boolRules, intRules, floatRules, strRules, varRules, kwRules) (pattern, replacer) -> 
         match pattern with
-        | PBool p -> (p, replacer)::boolRules, intRules, floatRules, strRules, arrRules, varRules, kwRules
-        | PInteger p -> boolRules, (p, replacer)::intRules, floatRules, strRules, arrRules, varRules, kwRules
-        | PFloat p -> boolRules, intRules, (p, replacer)::floatRules, strRules, arrRules, varRules, kwRules
-        | PString p -> boolRules, intRules, floatRules, (p, replacer)::strRules, arrRules, varRules, kwRules
-        | PVariable p -> boolRules, intRules, floatRules, strRules, arrRules, (p, replacer)::varRules, kwRules
-        | PKeyword p -> boolRules, intRules, floatRules, strRules, arrRules, varRules, (p, replacer)::kwRules
-    ) ([], [], [], [], [], [], [])
+        | PBool p -> (p, replacer)::boolRules, intRules, floatRules, strRules, varRules, kwRules
+        | PInteger p -> boolRules, (p, replacer)::intRules, floatRules, strRules, varRules, kwRules
+        | PFloat p -> boolRules, intRules, (p, replacer)::floatRules, strRules, varRules, kwRules
+        | PString p -> boolRules, intRules, floatRules, (p, replacer)::strRules, varRules, kwRules
+        | PVariable p -> boolRules, intRules, floatRules, strRules, (p, replacer)::varRules, kwRules
+        | PKeyword p -> boolRules, intRules, floatRules, strRules, varRules, (p, replacer)::kwRules
+    ) ([], [], [], [], [], [])
         
-let private buildAtomInner (rules: (AtomPattern * Replacer) list) : AtomDecisionTree =
-    let boolRules, intRules, floatRules, strRules, arrRules, varRules, kwRules = partitionAtoms rules
+let private buildAtomInner (rules: (AtomPattern * ProtoReplacer) list) : AtomDecisionTree =
+    let boolRules, intRules, floatRules, strRules, varRules, kwRules = partitionAtoms rules
 
     { 
         bool = ifEmptyNoneElseApply buildPatternMap boolRules
@@ -53,12 +77,12 @@ let private buildAtomInner (rules: (AtomPattern * Replacer) list) : AtomDecision
         keyword = ifEmptyNoneElseApply buildPatternMap kwRules
     }
 
-let private buildAtom (rules: (PatternUnion<AtomPattern> * Replacer) list) : PatternWrapper<AtomDecisionTree> =
-    let valueRules, anyRule = separateAnyFromValueBased "atom" rules
-    { value = buildAtomInner valueRules; any = anyRule }
+let private buildAtom (rules: (PatternUnion<AtomPattern> * ProtoReplacer) list) : PatternWrapper<AtomDecisionTree> =
+    let constantValueRules, valueRules, anyRule = separatePUOptions "atom" rules
+    { constantValue = buildAtomInner constantValueRules; value = buildAtomInner valueRules; any = anyRule }
 
 // Lists and Nodes
-let private buildNodeInner (rules: (CollectablePattern list * Replacer) list) =
+let private buildNodeInner (rules: (CollectablePattern list * ProtoReplacer) list) =
     let rulesEnding, rulesContinuing = 
         rules 
         |> List.partition (fun (pattern: CollectablePattern list, _) -> pattern.Length = 1)
@@ -79,7 +103,7 @@ let private buildNodeInner (rules: (CollectablePattern list * Replacer) list) =
 
     if restCandidates.Length > 1 then failwithf "Got multiple rules that match the same pattern (rest): %A" restCandidates
 
-    let rest: Replacer option =
+    let rest: ProtoReplacer option =
         restCandidates
         |> List.tryHead
         |> Option.map snd
@@ -104,32 +128,38 @@ let private buildNodeInner (rules: (CollectablePattern list * Replacer) list) =
 
     { value = nodes; ending = ending; rest = rest }
 
-let private buildNode (rules: (PatternUnion<CollectablePattern list> * Replacer) list) =
-    let valueRules, anyRule = separateAnyFromValueBased "node" rules
+let private buildSimplePatternWrapper ruleGroupStr (rules: (SimplePatternUnion<'a> * ProtoReplacer) list) =
+    let valueRules, anyRule = separateSimplePUOptions ruleGroupStr rules
+    { value = valueRules; any = anyRule }
+
+let private buildNode (rules: (SimplePatternUnion<CollectablePattern list> * ProtoReplacer) list) : CollectablePatternWrapper<NodeDecisionTree> =
+    let valueRules, anyRule = separateSimplePUOptions "node" rules
     { value = buildNodeInner valueRules; any = anyRule }
 
 // Expression
-let private partitionToExpressionTypes (rules: (ExpressionPattern * Replacer) list) =
+let private partitionToExpressionTypes (rules: (ExpressionPattern * ProtoReplacer) list) =
     rules
-    |> List.fold (fun (atomRuleSets, nodeRuleSets, listRuleSets) (pattern, replacer) ->
+    |> List.fold (fun (atomRuleSets, nodeRuleSets, arrayRuleSets, lambdaRuleSets) (pattern, replacer) ->
         match pattern with
-        | PAtom leaf -> (leaf, replacer)::atomRuleSets, nodeRuleSets, listRuleSets
-        | PArray arr -> atomRuleSets, nodeRuleSets, (arr, replacer)::listRuleSets
-        | PNode children -> atomRuleSets, (children, replacer)::nodeRuleSets, listRuleSets
-    ) ([], [], [])
+        | PAtom leaf -> (leaf, replacer)::atomRuleSets, nodeRuleSets, arrayRuleSets, lambdaRuleSets
+        | PArray arr -> atomRuleSets, nodeRuleSets, (arr, replacer)::arrayRuleSets, lambdaRuleSets
+        | PNode children -> atomRuleSets, (children, replacer)::nodeRuleSets, arrayRuleSets, lambdaRuleSets
+        | PLambda signature -> atomRuleSets, nodeRuleSets, arrayRuleSets, (signature, replacer)::lambdaRuleSets
+    ) ([], [], [], [])
 
-let private buildExpression (rules: (ExpressionPattern * Replacer) list) : ExpressionDecisionTree =
-    let atomRuleSet, nodeRuleSet, listRuleSet = partitionToExpressionTypes rules
+let private buildExpression (rules: (ExpressionPattern * ProtoReplacer) list) : ExpressionDecisionTree =
+    let atomRuleSet, nodeRuleSet, arrayRuleSet, lambdaRuleSets = partitionToExpressionTypes rules
 
     { 
         atom = ifEmptyNoneElseApply buildAtom atomRuleSet
         node = ifEmptyNoneElseApply buildNode nodeRuleSet
-        list = ifEmptyNoneElseApply buildNode listRuleSet
+        array = ifEmptyNoneElseApply buildNode arrayRuleSet
+        lambda = ifEmptyNoneElseApply (buildSimplePatternWrapper "lambda") lambdaRuleSets
     }
 
-let buildFirstLevel (rules: (Pattern * Replacer) list) =
-    let valueRules, anyRule = separateAnyFromValueBased "first level" rules
-    { value = ifEmptyNoneElseApply buildExpression valueRules; any = anyRule }
+let buildFirstLevel (rules: (Pattern * ProtoReplacer) list) =
+    let constantValueRules, valueRules, anyRule = separatePUOptions "first level" rules
+    { constantValue = ifEmptyNoneElseApply buildExpression constantValueRules; value = ifEmptyNoneElseApply buildExpression valueRules; any = anyRule }
 
 type Builder(allRules: RewriteRule list) =
     member this.constructTree : FirstLevelPattern = 

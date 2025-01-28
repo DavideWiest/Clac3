@@ -4,7 +4,7 @@ open Clac3.Expression
 open Clac3.Type
 
 // this should be closures, and a lot more flexible. but suffices as first version
-// also, the returntype can be inferred
+// also, the returntype could be inferred
 
 type RawCustomFn = {
     argIdents: string array

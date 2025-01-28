@@ -6,6 +6,7 @@ open Clac3.Expression
 open Clac3.Type
 open Clac3.FunctionalExpression
 open Clac3.Function
+open Clac3.P1.Domain
 
 module rec P2ToString =
     let atom = function
@@ -31,6 +32,26 @@ module rec P2ToString =
 
     let node bindingRelation = Array.map (expressionInner bindingRelation) >> String.concat " "
     let prepend a s = if s = "" then a else sprintf "%s %s" a s
+
+
+module Interpreter = 
+    let getReferenceStore (baseBindings: S1.Binding array) (definitions: RawBinding array) = 
+        let baseSignatureMap = 
+            baseBindings 
+            |> Array.map (fun b -> b.ident, b.signature) 
+
+        let customSignatureMap =
+            definitions 
+            |> Array.map (fun d -> d.ident, d.signature)
+
+        baseSignatureMap
+        |> Array.append customSignatureMap
+        |> Array.map (fun (k, signature) -> k, TLambda signature)
+        |> Map.ofArray
+
+    let getBindingMap (bindings: S1.Binding array) =    
+        bindings |> Array.map (fun b -> b.ident, b) |> Map.ofArray
+
 
 let toBinding (ident, signatureList: Type list, binding) : S1.Binding = 
     if signatureList.Length = 0 then failwithf "Signature requires at least 1 type. Got: %A" signatureList

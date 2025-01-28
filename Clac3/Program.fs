@@ -4,14 +4,15 @@ open Clac3.Application
 open Clac3.Expression
 open Clac3.P1.PatternReplacer
 open Clac3.P1.DomainUtil
-open Clac3.App.P2Application
 open Clac3.P2.DomainUtil
-open Clac3.App.ClacApplication
+open Clac3.App.P2Application
+open Clac3.App.InterpretedApp
+open Clac3.BuiltIn.P1.Core
 open Clac3.Data
 
+// defined in the functional domain
 let fibFn = toBinding ("fib", [TInteger; TInteger],
-    toCustomFn (
-        ["x"],
+    toCustomFn (["x"],
         toBranch (
             toReference ("ltInt", [|toValueReference "x"; faInt 2|]),
             toValueReference "x",
@@ -27,9 +28,8 @@ let fibFn = toBinding ("fib", [TInteger; TInteger],
     )
 )
 
-let fibFnFloat = toBinding("fibFloat", [TFloat; TFloat],
-    toCustomFn (
-        ["x"],
+let fibFnFloat = toBinding ("fibFloat", [TFloat; TFloat],
+    toCustomFn (["x"],
         toBranch (
             toReference ("ltFloat", [|toValueReference "x"; faFl 2.0|]),
             toValueReference "x",
@@ -45,9 +45,9 @@ let fibFnFloat = toBinding("fibFloat", [TFloat; TFloat],
     )
 )
 
+// defined in phase-1 domain
 let factFn = toDefinition("fact", [TInteger; TInteger], 
-    toRawCustomFn (
-        ["x"],
+    toRawCustomFn (["x"],
         Node [
             aKw "if"; Node [aVar "x"; aKw "="; aInt 0]; 
             aKw "then"; aInt 1; 
@@ -60,9 +60,10 @@ let factFn = toDefinition("fact", [TInteger; TInteger],
 
 let factRule = {
     pattern = NC [pInt; vKw "!"]
-    replacer = Args.one (fun n -> Node [aKw "fact"; n])
+    replacer = Args.one (fun n -> taNo [taKw "fact"; n])
 }
 
+// applications
 let appFunc = ExtendedFunctionalApplication([|fibFn|],
     [|toReference ("fib", [|faInt 25|])|]
 )
@@ -71,7 +72,7 @@ let appFunc2 = ExtendedFunctionalApplication([|fibFnFloat|],
     [|toReference ("fibFloat", [|faFl 25|])|]
 )
 
-let clacApp = ExtendedClacApplication(
+let clacApp = ExtendedInterpretedApp(
     [factRule],
     [|fibFn|],
     [|factFn|],
@@ -93,4 +94,7 @@ let measureAppRepeatedly n (app: Application<'a, 'b, 'c>) (toStr: 'c -> string) 
 //measureAppRepeatedly 20 appFunc P2ToString.atom
 //measureAppRepeatedly 100 appFunc2 P2ToString.atom
 
+printfn "Rules: %A" (coreRules)
+
 measureApp clacApp (sprintf "%A")
+

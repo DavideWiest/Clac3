@@ -13,6 +13,9 @@ module Option =
     let tupleWith v option = option |> Option.map (fun optionV -> v,optionV)
     let tupleWithRev option v = option |> Option.map (fun optionV -> optionV,v)
 
+    let reverseTuple (t: ('a * 'b) option) = 
+        t |> Option.map (fun (a,b) -> b,a)
+
 module List = 
     let headOption = function
         | [] -> None
@@ -27,4 +30,5 @@ module ToString =
     let inBrackets s = "[" + s + "]"
 
 module Error = 
-    let typeError typeString item = failwithf "Expected %s, got %A" typeString item
+    let typeError expectedType item = failwithf "Expected %A, got %A" expectedType item
+    let typeErrorWithCtx expectedType item ctx = failwithf "Expected %A, got %A: %A" expectedType item ctx

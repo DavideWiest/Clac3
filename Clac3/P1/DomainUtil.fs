@@ -17,18 +17,58 @@ module rec ToString =
 
     let expressionInner = function
         | Atom a -> atom a
-        | Array l -> l |> Array.map expression |> String.concat ", " |> ToString.inBrackets
+        | Array l -> l |> List.map expression |> String.concat ", " |> ToString.inBrackets
         | Node children -> children |> node |> ToString.inParans
 
     let expression = function
-        | Array l-> l |> Array.map expression |> String.concat ", " |> ToString.inBrackets
+        | Array l-> l |> List.map expression |> String.concat ", " |> ToString.inBrackets
         | Node children -> node children
         | expr -> expressionInner expr
 
     let node = List.map expressionInner >> String.concat " "
 
+
+module Interpreter = 
+    let rec valueReplacerWrapper tryReplaceValue exprValue = 
+        match tryReplaceValue exprValue with
+        | Some exprValue' -> valueReplacerWrapper tryReplaceValue exprValue'
+        | None -> exprValue
+
+    // must be lifted every time it's replaced?
+    let rec replacerWrapper lift tryReplace expr : TAExpression = 
+        match tryReplace expr with
+        | Some expr' -> replacerWrapper lift tryReplace (lift expr')
+        | None -> expr
+
+    let compareType expected taExpr = 
+        if expected <> None && expected <> Some taExpr.eType then Error.typeError expected taExpr.eType taExpr.expr
+
+        taExpr
+
+
+module Lift = 
+    let typeAnnotateAtom (bindingTypeMap: Map<string, Type>) = function
+        | Bool _ -> TBool
+        | Integer _ -> TInteger
+        | Float _ -> TFloat
+        | String _ -> TString
+        | Variable v -> bindingTypeMap[v]
+        | Keyword _ -> TKeyword
+
+    let liftAtom bindingTypeMap a = { expr=TAAtom a; eType=typeAnnotateAtom bindingTypeMap a }
+
+    let typeAnnotateAtomWithoutBindings = function
+        | Bool _ -> TBool
+        | Integer _ -> TInteger
+        | Float _ -> TFloat
+        | String _ -> TString
+        | Variable v -> failwith "Calling typeAnnotateAtomWithoutBindings with a variable is not allowed."
+        | Keyword _ -> TKeyword
+
+    let liftAtomWithoutBindings a = { expr=TAAtom a; eType=typeAnnotateAtomWithoutBindings a }
+
 let toDefinition (ident, signatureList: Type list, body) : RawBinding = 
-    if signatureList.Length = 0 then failwithf "Signature requires at least 1 type. Got: %A" signatureList
+    if signatureList.Length = 0 then failwith "Signature requires at least 1 type. Got an empty signature."
     let argTypes, outputType = signatureList[..signatureList.Length-2], signatureList[signatureList.Length-1]
 
     {
@@ -42,33 +82,33 @@ let toRawCustomFn (argIdents, body) = RCustom { argIdents = Array.ofList argIden
 
 
 // value patterns
-let vAtom = Value >> PAtom
+let vpAtom = Value >> PAtom >> Value
 
-let vBo = Value >> PBool >> vAtom >> Value
-let vInt = Value >> PInteger >> vAtom >> Value
-let vFl = Value >> PFloat >> vAtom >> Value
-let vStr = Value >> PString >> vAtom >> Value
-let vVar = Value >> PVariable >> vAtom >> Value
-let vKw = Value >> PKeyword >> vAtom >> Value
+let vBo = Value >> PBool >> vpAtom
+let vInt = Value >> PInteger >> vpAtom
+let vFl = Value >> PFloat >> vpAtom
+let vStr = Value >> PString >> vpAtom
+let vVar = Value >> PVariable >> vpAtom
+let vKw = Value >> PKeyword >> vpAtom
 
 // any patterns
-let pBo = Any |> PBool |> vAtom |> Value
-let pInt = Any |> PInteger |> vAtom |> Value
-let pFl = Any |> PFloat |> vAtom |> Value
-let pStr = Any |> PString |> vAtom |> Value
-let pVar = Any |> PVariable |> vAtom |> Value
-let pKw = Any |> PKeyword |> vAtom |> Value
+let pBo = Any |> PBool |> vpAtom
+let pInt = Any |> PInteger |> vpAtom
+let pFl = Any |> PFloat |> vpAtom
+let pStr = Any |> PString |> vpAtom
+let pVar = Any |> PVariable |> vpAtom
+let pKw = Any |> PKeyword |> vpAtom
 
-let pLi = Any |> PArray |> Value
-let pNo = Any |> PNode |> Value
+let pLi = SimplePatternUnion.Any |> PArray |> Value
+let pNo = SimplePatternUnion.Any |> PNode |> Value
 
 // List/node containing
-let LC = (List.map CValue) >> Value >> PArray >> Value
-let NC = (List.map CValue) >> Value >> PNode >> Value
+let LC = (List.map CValue) >> SimplePatternUnion.Value >> PArray >> Value
+let NC = (List.map CValue) >> SimplePatternUnion.Value >> PNode >> Value
 
 // list/node containing with collector
-let LCC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> Value |> PNode |> Value
-let NCC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> Value |> PNode |> Value
+let LCC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> SimplePatternUnion.Value |> PNode |> Value
+let NCC parts = parts |> List.map CValue |> fun a -> List.append a [CRest] |> SimplePatternUnion.Value |> PNode |> Value
 
 // expression parts
 let aBo = Bool >> Atom
@@ -81,23 +121,31 @@ let aKw = Keyword >> Atom
 let aLi = Array
 let aNo = Node
 
+// type-annotated expression parts
+let taBo = Bool >> Lift.liftAtomWithoutBindings
+let taInt = Integer >> Lift.liftAtomWithoutBindings
+let taFl = Float >> Lift.liftAtomWithoutBindings
+let taStr = String >> Lift.liftAtomWithoutBindings
+let taVar = Variable >> Lift.liftAtomWithoutBindings
+let taKw = Keyword >> Lift.liftAtomWithoutBindings
+
+let taLi = TAArray
+let taNo = TANode
+
+
 module Args =
     let zero v _ = v
-    let one matcher (args: Expression list) : Expression = matcher args[0]
-    let two matcher (args: Expression list) = matcher args[0] args[1]
-    let three matcher (args: Expression list) = matcher args[0] args[1] args[2]
-    let four matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3]
-    let five matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4]
-    let six matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5]
-    let seven matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6]
-    let eight matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7]
-    let nine matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8]
-    let ten matcher (args: Expression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] args[9]
-
-    let printAndPass (args: Expression list) = 
-        printfn "args: %A" (args |> List.map ToString.expression)
-        args
+    let one matcher (args: TAExpression list) = matcher args[0]
+    let two matcher (args: TAExpression list) = matcher args[0] args[1]
+    let three matcher (args: TAExpression list) = matcher args[0] args[1] args[2]
+    let four matcher (args: TAExpression list) = matcher args[0] args[1] args[2] args[3]
+    let five matcher (args: TAExpression list) = matcher args[0] args[1] args[2] args[3] args[4]
+    let six matcher (args: TAExpression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5]
+    let seven matcher (args: TAExpression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6]
+    let eight matcher (args: TAExpression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7]
+    let nine matcher (args: TAExpression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8]
+    let ten matcher (args: TAExpression list) = matcher args[0] args[1] args[2] args[3] args[4] args[5] args[6] args[7] args[8] args[9]
 
     let getChildren = function
-        | Node children -> children
+        | TANode children -> children
         | expr -> Error.typeError "node" expr

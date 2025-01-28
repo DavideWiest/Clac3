@@ -20,6 +20,8 @@
     <Compile Include="P1\DecisionTree\Domain.fs" />
     <Compile Include="P1\DecisionTree\Builder.fs" />
     <Compile Include="P1\DecisionTree\Walker.fs" />
+    <Compile Include="P2\Lift.fs" />
+    <Compile Include="P2\Conversion.fs" />
     <Compile Include="P2\DomainUtil.fs" />
     <Compile Include="P2\Interpreter.fs" />
     <Compile Include="P2\Normalizer.fs" />
@@ -27,7 +29,7 @@
     <Compile Include="BuiltIn\P2\Core.fs" />
     <Compile Include="App\P1Application.fs" />
     <Compile Include="App\P2Application.fs" />
-    <Compile Include="App\ClacApplication.fs" />
+    <Compile Include="App\InterpretedApp.fs" />
     <Compile Include="Data.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
